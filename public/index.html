@@ -1,0 +1,1137 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="robots" content="noindex, nofollow">
+<title>Rocketise TACOS Tracker</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Schibsted+Grotesk:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap">
+<style>
+:root{color-scheme:light;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
+body{margin:0}
+[hidden]{display:none!important}
+/* Layout: top bar with client switcher, two collapsible admin panels (upload, tracked parents), then one tracker card: marketplace tabs, trend chart, expandable parent/child table. */
+:root{
+  --bg:#f2f3f7; --card:#ffffff; --card2:#f6f7fb; --text:#141a2c; --sub:#5b6479; --border:#dde1ea;
+  --accent:#2f45c8; --accent-ink:#ffffff; --accent-soft:#e8ebfb;
+  --good:#17753f; --good-bg:#dff2e7; --warn:#9a5200; --warn-bg:#fcebcb; --bad:#b92b2b; --bad-bg:#fbe0e0;
+  --font-ui:'Schibsted Grotesk',system-ui,-apple-system,'Segoe UI',Roboto,sans-serif;
+  --font-num:'JetBrains Mono',ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    --bg:#0f121b; --card:#171b27; --card2:#1d2231; --text:#e6e9f3; --sub:#97a0b7; --border:#2a3043;
+    --accent:#8394ff; --accent-ink:#0f121b; --accent-soft:#232a4d;
+    --good:#58d08b; --good-bg:#17382a; --warn:#f0b05a; --warn-bg:#3d2d12; --bad:#ff8a8a; --bad-bg:#401b1f;
+    color-scheme:dark;
+  }
+}
+:root[data-theme="dark"]{
+  --bg:#0f121b; --card:#171b27; --card2:#1d2231; --text:#e6e9f3; --sub:#97a0b7; --border:#2a3043;
+  --accent:#8394ff; --accent-ink:#0f121b; --accent-soft:#232a4d;
+  --good:#58d08b; --good-bg:#17382a; --warn:#f0b05a; --warn-bg:#3d2d12; --bad:#ff8a8a; --bad-bg:#401b1f;
+  color-scheme:dark;
+}
+*{box-sizing:border-box}
+body{background:var(--bg);color:var(--text);font-family:var(--font-ui);font-size:14px;line-height:1.45}
+.wrap{max-width:1440px;margin:0 auto;padding-inline:16px;padding-block:18px 64px;display:flex;flex-direction:column;gap:16px}
+body.client .admin, body.readonly .admin{display:none !important}
+button,input,select,textarea{font:inherit;color:inherit}
+:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+
+body.locked .wrap>*:not(#loginForm){display:none !important}
+#loginForm{max-width:420px}
+.top{display:flex;flex-wrap:wrap;gap:12px 20px;align-items:flex-end;justify-content:space-between}
+.eyebrow{margin:0;font-size:11.5px;font-weight:600;letter-spacing:.09em;text-transform:uppercase;color:var(--sub)}
+h1{margin:2px 0 0;font-size:24px;line-height:1.15;letter-spacing:-.01em;text-wrap:balance}
+.switch{display:flex;flex-wrap:wrap;gap:8px;align-items:flex-end}
+.field{display:flex;flex-direction:column;gap:4px;min-width:0}
+.field label,.lbl{font-size:12px;font-weight:600;color:var(--sub)}
+.opt{font-weight:400}
+input[type=text],input[type=date],input[type=password],select,textarea{background:var(--card);border:1px solid var(--border);border-radius:8px;padding:7px 10px;max-width:100%}
+input[type=file]{font-size:12.5px;max-width:100%}
+textarea{width:100%;font-family:var(--font-num);font-size:12px}
+.btn{background:var(--accent);color:var(--accent-ink);border:1px solid var(--accent);border-radius:8px;padding:7px 14px;font-weight:600;cursor:pointer}
+.btn:disabled{opacity:.45;cursor:default}
+.btn.ghost{background:transparent;color:var(--accent)}
+.btn.small{padding:4px 10px;font-size:12.5px}
+.hint{margin:0;font-size:12px;color:var(--sub)}
+.hint code{font-family:var(--font-num);font-size:11.5px;background:var(--card2);border:1px solid var(--border);border-radius:5px;padding:1px 5px}
+.row{display:flex;flex-wrap:wrap;gap:10px;align-items:center}
+.status{font-size:12.5px;color:var(--sub)}
+.status.err{color:var(--bad)}
+
+.panel{background:var(--card);border:1px solid var(--border);border-radius:12px}
+.panel>summary{cursor:pointer;padding:12px 16px;font-weight:600;list-style:none;display:flex;justify-content:space-between;align-items:center;gap:10px}
+.panel>summary::-webkit-details-marker{display:none}
+.panel>summary::after{content:"+";font-family:var(--font-num);color:var(--sub);font-size:16px}
+.panel[open]>summary::after{content:"–"}
+.panel-body{padding:4px 16px 16px;display:flex;flex-direction:column;gap:14px}
+.grid-up{display:grid;grid-template-columns:repeat(auto-fit,minmax(230px,1fr));gap:12px 16px}
+.preview{display:grid;grid-template-columns:max-content 1fr;gap:4px 14px;font-size:12.5px;background:var(--card2);border:1px solid var(--border);border-radius:10px;padding:10px 14px}
+.preview:empty{display:none}
+.preview dt{color:var(--sub);font-weight:600}
+.preview dd{margin:0;font-family:var(--font-num);font-size:12px;min-width:0;overflow-wrap:anywhere}
+.preview .errline{grid-column:1/-1;color:var(--bad);font-weight:500}
+.chips{display:flex;flex-wrap:wrap;gap:6px}
+.chip{display:inline-flex;align-items:center;gap:6px;border:1px solid var(--border);background:var(--card);border-radius:999px;padding:3px 10px;font-size:12.5px;cursor:pointer}
+.chip input{margin:0}
+.chip.del{color:var(--sub)}
+.chip.del.armed{color:var(--bad);border-color:var(--bad)}
+
+.card{background:var(--card);border:1px solid var(--border);border-radius:12px;padding:16px;display:flex;flex-direction:column;gap:14px;min-width:0}
+.tabs{display:flex;flex-wrap:wrap;gap:6px}
+.tab{border:1px solid var(--border);background:transparent;border-radius:8px;padding:6px 14px;font-weight:600;cursor:pointer;color:var(--sub)}
+.tab[aria-selected="true"]{background:var(--accent);border-color:var(--accent);color:var(--accent-ink)}
+.controls{display:flex;flex-wrap:wrap;gap:10px 18px;align-items:center}
+.controls .grp{display:flex;flex-wrap:wrap;gap:6px;align-items:center}
+.legend-t{display:flex;flex-wrap:wrap;gap:8px 14px;font-size:12px;color:var(--sub)}
+.dot{display:inline-block;width:9px;height:9px;border-radius:3px;margin-right:5px;vertical-align:-1px}
+.dot.g{background:var(--good)} .dot.o{background:var(--warn)} .dot.r{background:var(--bad)}
+
+.trend{border:1px solid var(--border);border-radius:10px;padding:12px;display:flex;flex-direction:column;gap:10px;position:relative;min-width:0}
+.seg{display:inline-flex;border:1px solid var(--border);border-radius:8px;overflow:hidden}
+.seg button{border:0;background:transparent;padding:5px 11px;font-size:12.5px;font-weight:600;color:var(--sub);cursor:pointer;border-right:1px solid var(--border)}
+.seg button:last-child{border-right:0}
+.seg button[aria-pressed="true"]{background:var(--accent-soft);color:var(--accent)}
+.chart{width:100%;height:auto;display:block}
+.chart text{font-family:var(--font-num);font-size:10px;fill:var(--sub)}
+.tip{position:absolute;z-index:5;pointer-events:none;background:var(--card);border:1px solid var(--border);border-radius:8px;padding:8px 10px;font-size:12px;box-shadow:0 4px 14px rgba(10,14,30,.18);white-space:nowrap;display:none}
+.tip b{font-weight:600}
+.tip .n{font-family:var(--font-num)}
+
+.tablewrap{overflow-x:auto;border:1px solid var(--border);border-radius:10px;background:var(--card)}
+table{border-collapse:separate;border-spacing:0;width:100%;font-family:var(--font-num);font-size:12px}
+th,td{padding:7px 10px;text-align:right;white-space:nowrap;border-bottom:1px solid var(--border);background:var(--card);font-variant-numeric:tabular-nums}
+thead th{background:var(--card2);color:var(--sub);font-family:var(--font-ui);font-weight:600;font-size:11.5px}
+thead th.wkh{text-align:center;color:var(--text)}
+thead tr:first-child th:first-child,td:first-child{position:sticky;left:0;z-index:1;text-align:left;min-width:210px;max-width:290px;box-shadow:1px 0 0 var(--border)}
+.wk{border-left:1px solid var(--border)}
+tbody tr:last-child td{border-bottom:0}
+.r-total>td{background:var(--accent-soft);font-weight:600}
+.r-child>td{background:var(--card2)}
+.cell1{display:flex;align-items:center;gap:8px;min-width:0}
+.idblock{display:flex;flex-direction:column;min-width:0}
+.asin{font-weight:600;font-size:12px}
+.ttl{font-family:var(--font-ui);font-size:11.5px;color:var(--sub);overflow:hidden;text-overflow:ellipsis;max-width:200px}
+.r-child .cell1{padding-left:26px}
+.r-child .asin{font-weight:500}
+.count{margin-left:auto;font-family:var(--font-ui);font-size:11px;color:var(--sub);border:1px solid var(--border);border-radius:999px;padding:0 7px}
+.caret{width:20px;height:20px;border:1px solid var(--border);border-radius:6px;background:var(--card);cursor:pointer;display:grid;place-items:center;padding:0;flex:none}
+.caret svg{width:10px;height:10px;transition:transform .12s}
+.caret[aria-expanded="true"] svg{transform:rotate(90deg)}
+.pill{display:inline-block;padding:1px 8px;border-radius:999px;font-weight:600}
+.t-good .pill{background:var(--good-bg);color:var(--good)}
+.t-warn .pill{background:var(--warn-bg);color:var(--warn)}
+.t-bad .pill{background:var(--bad-bg);color:var(--bad)}
+.empty{color:var(--sub);padding:28px 12px;text-align:center}
+.empty strong{display:block;color:var(--text);font-size:15px;margin-bottom:4px}
+.foot{font-size:12px;color:var(--sub)}
+#exitPreview{position:fixed;right:16px;bottom:calc(16px + env(safe-area-inset-bottom,0px));z-index:20;box-shadow:0 4px 14px rgba(10,14,30,.25)}
+@media (max-width:560px){
+  h1{font-size:21px}
+  thead tr:first-child th:first-child,td:first-child{min-width:150px;max-width:170px}
+  .ttl{max-width:110px}
+}
+@media (prefers-reduced-motion:reduce){.caret svg{transition:none}}
+</style>
+</head>
+<body class="locked">
+
+<div class="wrap">
+  <form class="card" id="loginForm" hidden>
+    <div><p class="eyebrow">Rocketise</p><h1 style="font-size:21px">Sign in</h1></div>
+    <div class="field"><label for="pw">Admin password</label><input type="password" id="pw" autocomplete="current-password"></div>
+    <div class="row"><button class="btn" type="submit">Sign in</button><span class="status" id="loginStatus" role="status" aria-live="polite"></span></div>
+    <p class="hint">Client links open without a password and show one client only.</p>
+  </form>
+  <header class="top">
+    <div>
+      <p class="eyebrow" id="eyebrow">Rocketise</p>
+      <h1 id="h1">TACOS Tracker</h1>
+    </div>
+    <div class="switch admin" id="switcher">
+      <div class="field"><label for="clientSel">Client</label><select id="clientSel"></select></div>
+      <button class="btn ghost" id="newClientBtn" type="button">+ Client</button>
+      <button class="btn ghost" id="previewBtn" type="button">Preview client view</button>
+      <button class="btn ghost" id="signOutBtn" type="button">Sign out</button>
+      <button class="btn ghost" id="clientPageBtn" type="button" hidden>Export client page</button>
+      <button class="btn" id="siteBtn" type="button" hidden>Export site (all clients)</button>
+      <button class="btn ghost" id="exportBtn" type="button" hidden>Export backup</button>
+      <button class="btn ghost" id="importBtn" type="button" hidden>Import backup</button>
+      <input type="file" id="importFile" accept=".json,application/json" hidden>
+      <button class="btn ghost" id="migrateBtn" type="button" hidden>Move old browser data to the server</button>
+    </div>
+  </header>
+
+  <div class="row admin" id="exportOpts">
+    <span class="hint">Client link shows (this client):</span>
+    <div class="chips" id="exportChips"></div>
+  </div>
+  <p class="status admin" id="backupStatus" role="status" aria-live="polite" style="margin:0"></p>
+  <form class="row admin" id="newClientForm" hidden>
+    <div class="field"><label for="clientName">New client name</label><input type="text" id="clientName" placeholder="e.g. Clevr Blends" autocomplete="off"></div>
+    <button class="btn" type="submit">Add client</button>
+    <button class="btn ghost" type="button" id="cancelClient">Cancel</button>
+    <span class="status" id="clientStatus" role="status"></span>
+  </form>
+  <div class="row admin" id="shareRow" hidden>
+    <span class="hint" id="shareHint"></span>
+    <button class="btn ghost small" id="copyLink" type="button">Copy client link</button>
+    <button class="btn ghost small" id="rotateLink" type="button">New link</button>
+    <span class="status" id="shareStatus" role="status" aria-live="polite"></span>
+  </div>
+
+  <details class="panel admin" id="uploadPanel">
+    <summary>Upload this week's reports</summary>
+    <div class="panel-body">
+      <div class="grid-up">
+        <div class="field"><label for="upMp">Marketplace</label><select id="upMp"></select></div>
+        <div class="field"><label for="fBiz">Business Report (child ASIN level)</label><input type="file" id="fBiz" accept=".csv,.xlsx,.xls"></div>
+        <div class="field"><label for="fSp">Advertised product report (SP + SD combined)</label><input type="file" id="fSp" accept=".csv,.xlsx,.xls"></div>
+        <div class="field"><label for="weekDate">Week start</label><input type="date" id="weekDate"></div>
+        <div class="field"><label for="weekLabel">Week label</label><input type="text" id="weekLabel" placeholder="e.g. 3 Oct – 9 Oct 2026"></div>
+      </div>
+      <dl class="preview" id="preview"></dl>
+      <div class="row">
+        <button class="btn" id="saveBtn" type="button" disabled>Save week</button>
+        <span class="status" id="upStatus" role="status" aria-live="polite"></span>
+      </div>
+      <div>
+        <div class="lbl" style="margin-bottom:6px">Saved weeks for the marketplace selected above</div>
+        <div class="chips" id="savedWeeks"></div>
+      </div>
+    </div>
+  </details>
+
+  <details class="panel admin" id="trackedPanel">
+    <summary>Tracked parent ASINs</summary>
+    <div class="panel-body">
+      <p class="hint">Optional. When a marketplace has a list, only those parents (and their children) are kept when you save a week. Leave it empty to keep every ASIN in the Business Report.</p>
+      <div class="field" style="max-width:200px"><label for="trMp">Marketplace</label><select id="trMp"></select></div>
+      <textarea id="trList" rows="5" placeholder="One parent ASIN per line" spellcheck="false"></textarea>
+      <div class="row">
+        <button class="btn" id="saveTrBtn" type="button">Save list</button>
+        <button class="btn ghost" id="cleanBtn" type="button">Remove untracked ASINs from saved weeks</button>
+        <span class="status" id="trStatus" role="status" aria-live="polite"></span>
+      </div>
+    </div>
+  </details>
+
+  <section class="card" id="trackerCard">
+    <div class="tabs" id="mpTabs" role="tablist" aria-label="Marketplace"></div>
+    <div class="controls" id="controls">
+      <div class="grp"><span class="lbl">Weeks</span>
+        <select id="weeksSel" aria-label="Weeks shown">
+          <option value="4">Last 4</option><option value="8">Last 8</option><option value="12">Last 12</option><option value="0">All</option>
+        </select>
+      </div>
+      <div class="grp" id="metricChips"><span class="lbl">Columns</span></div>
+      <div class="grp">
+        <button class="btn ghost small" id="expandAll" type="button">Expand all</button>
+        <button class="btn ghost small" id="collapseAll" type="button">Collapse all</button>
+      </div>
+    </div>
+    <div class="legend-t"><span><i class="dot g"></i>TACOS 20% or lower</span><span><i class="dot o"></i>Above 20% to 22%</span><span><i class="dot r"></i>Above 22%</span><span>Parent TACOS is total spend ÷ total sales of all its children, not an average of child percentages.</span></div>
+    <div id="trendArea"></div>
+    <div id="tableArea"></div>
+  </section>
+  <p class="foot" id="foot"></p>
+</div>
+<button class="btn" id="exitPreview" type="button" hidden>Exit client preview</button>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.4.1/papaparse.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+<script>
+const MPS=['DE','UK','FR','IT','ES','NL','BE','PL','SE','US','CA'];
+const CUR={DE:'€',FR:'€',IT:'€',ES:'€',NL:'€',BE:'€',UK:'£',US:'$',CA:'$',SE:'kr ',PL:'zł '};
+const EU_DEC=new Set(['DE','FR','IT','ES','NL','BE','PL','SE']);
+const MON=['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+const METRICS=[
+  {k:'spend',l:'Total spend'},{k:'sales',l:'Sales'},{k:'orders',l:'Orders'},
+  {k:'units',l:'Units'},{k:'tacos',l:'TACOS'},{k:'sessions',l:'Sessions'},{k:'cvr',l:'Unit session %'}
+];
+const HIDDEN=new Set(); /* metrics removed from a client page */
+const TREND_METRICS=[{k:'tacos',l:'TACOS'},{k:'sales',l:'Sales'},{k:'spend',l:'Total spend'},{k:'units',l:'Units'},{k:'cvr',l:'Unit session %'}];
+const LS_CLIENT='rocketiseTacos.client', SS_PW='rocketiseTacos.pw';
+
+let canEdit=false,adminPw='';
+let clients={},clientId='',weeks=[],tracked={};
+let selMp='',weeksShown=4,metricsOn=new Set(['sales','units','spend','tacos']);
+let expanded=new Set(),trend={metric:'tacos',scope:'ALL'};
+let openedOnce=false;
+let shareToken='',previewMode=false,hashClient=false,snapMode=false;
+let P={biz:null,sp:null,sd:null},built=null,dateTouched=false;
+
+const $=id=>document.getElementById(id);
+const esc=s=>String(s==null?'':s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const slug=s=>String(s).toLowerCase().trim().replace(/[^a-z0-9]+/g,'-').replace(/^-+|-+$/g,'').slice(0,60);
+const fmtNum=(n,d=0)=>n==null||!isFinite(n)?'–':n.toLocaleString('en-GB',{minimumFractionDigits:d,maximumFractionDigits:d});
+const curOf=mp=>CUR[mp]||'';
+function lsGet(k){try{return localStorage.getItem(k);}catch(e){return null;}}
+function lsSet(k,v){try{localStorage.setItem(k,v);}catch(e){}}
+function ssGet(k){try{return sessionStorage.getItem(k);}catch(e){return null;}}
+function ssSet(k,v){try{if(v==null)sessionStorage.removeItem(k);else sessionStorage.setItem(k,v);}catch(e){}}
+
+/* ---------- number and date parsing ---------- */
+function parseNum(v,eu){
+  if(v==null||v==='') return null;
+  if(typeof v==='number') return isFinite(v)?v:null;
+  let s=String(v).trim().replace(/[^\d.,\-()]/g,'');
+  if(!s) return null;
+  let neg=false;
+  if(/^\(.*\)$/.test(s)){neg=true;s=s.slice(1,-1);}
+  if(s.charAt(0)==='-'){neg=true;}
+  s=s.replace(/-/g,'');
+  const lc=s.lastIndexOf(','),ld=s.lastIndexOf('.');
+  if(lc>=0&&ld>=0){
+    s = lc>ld ? s.replace(/\./g,'').replace(',','.') : s.replace(/,/g,'');
+  }else if(lc>=0){
+    const multi=(s.match(/,/g)||[]).length>1, after=s.length-lc-1;
+    if(multi||(after===3&&!eu)) s=s.replace(/,/g,''); else s=s.replace(',','.');
+  }else if(ld>=0){
+    const multi=(s.match(/\./g)||[]).length>1, after=s.length-ld-1;
+    if(multi||(after===3&&eu)) s=s.replace(/\./g,'');
+  }
+  const n=parseFloat(s);
+  if(isNaN(n)) return null;
+  return neg?-n:n;
+}
+function toDate(v){
+  if(v instanceof Date && !isNaN(v)){
+    const d=new Date(v.getTime()+12*3600e3);
+    return new Date(Date.UTC(d.getFullYear(),d.getMonth(),d.getDate()));
+  }
+  if(typeof v==='number' && v>30000 && v<80000) return new Date(Math.round((v-25569)*86400e3));
+  if(typeof v==='string'){
+    const s=v.trim(); let m;
+    if((m=s.match(/^(\d{4})-(\d{2})-(\d{2})/))) return new Date(Date.UTC(+m[1],+m[2]-1,+m[3]));
+    if((m=s.match(/^(\d{1,2})[\/.](\d{1,2})[\/.](\d{4})/))) return new Date(Date.UTC(+m[3],+m[2]-1,+m[1]));
+    const t=Date.parse(s+' UTC');
+    if(!isNaN(t)){const d=new Date(t);return new Date(Date.UTC(d.getUTCFullYear(),d.getUTCMonth(),d.getUTCDate()));}
+  }
+  return null;
+}
+const isoOf=d=>d.getUTCFullYear()+'-'+String(d.getUTCMonth()+1).padStart(2,'0')+'-'+String(d.getUTCDate()).padStart(2,'0');
+const dayOf=d=>d.getUTCDate()+' '+MON[d.getUTCMonth()];
+function labelOf(a,b){
+  const ya=a.getUTCFullYear(),yb=b.getUTCFullYear();
+  return (ya!==yb?dayOf(a)+' '+ya:dayOf(a))+' – '+dayOf(b)+' '+yb;
+}
+function shortDay(iso){const p=String(iso).split('-');return p.length===3?(+p[2])+' '+MON[+p[1]-1]:iso;}
+
+/* ---------- file reading ---------- */
+async function readRows(file){
+  if(/\.csv$/i.test(file.name)){
+    let t=await file.text(); t=t.replace(/^﻿/,'');
+    return Papa.parse(t,{skipEmptyLines:true}).data;
+  }
+  const buf=await file.arrayBuffer();
+  const wb=XLSX.read(buf,{type:'array',cellDates:true});
+  const ws=wb.Sheets[wb.SheetNames[0]];
+  return XLSX.utils.sheet_to_json(ws,{header:1,raw:true,defval:''});
+}
+const normH=s=>String(s==null?'':s).toLowerCase().replace(/[–—]/g,'-').replace(/\s+/g,' ').trim();
+function findHeaderRow(rows,test){
+  for(let i=0;i<Math.min(rows.length,25);i++){
+    const h=(rows[i]||[]).map(normH);
+    if(test(h)) return i;
+  }
+  return -1;
+}
+function parseBusiness(rows){
+  const hi=findHeaderRow(rows,h=>h.some(x=>x.includes('child')&&x.includes('asin')));
+  if(hi<0) return {error:'No "(Child) ASIN" column found. Export the Business Report "Detail Page Sales and Traffic by Child Item".'};
+  const h=rows[hi].map(normH), f=p=>h.findIndex(p);
+  const ix={
+    parent:f(x=>x.includes('parent')&&x.includes('asin')),
+    child:f(x=>x.includes('child')&&x.includes('asin')),
+    title:f(x=>x==='title'||x.startsWith('title')||x==='product name'),
+    sales:f(x=>x.includes('ordered product sales')&&!x.includes('b2b')),
+    units:f(x=>x.includes('units ordered')&&!x.includes('b2b')),
+    orders:f(x=>x.includes('total order items')&&!x.includes('b2b')),
+    sessions:f(x=>x.startsWith('sessions')&&x.includes('total')&&!x.includes('b2b'))
+  };
+  if(ix.sessions<0) ix.sessions=f(x=>x.startsWith('sessions')&&!x.includes('b2b')&&!x.includes('mobile')&&!x.includes('browser')&&!x.includes('percent'));
+  if(ix.sales<0) return {error:'No "Ordered Product Sales" column found. Columns seen: '+rows[hi].slice(0,12).join(', ')+'…'};
+  return {ix,rows:rows.slice(hi+1)};
+}
+function parseAds(rows){
+  /* New combined export (SP + SD + SB in one file): "Advertised product ID" + "Total cost". */
+  const ci=findHeaderRow(rows,h=>h.includes('advertised product id')&&h.includes('total cost'));
+  if(ci>=0){
+    const h=rows[ci].map(normH);
+    return {ix:{asin:h.indexOf('advertised product id'),spend:h.indexOf('total cost'),camp:h.indexOf('campaign name'),range:h.indexOf('date range'),mkt:h.indexOf('advertised product marketplace'),startI:-1,endI:-1,dateI:-1,combined:true},rows:rows.slice(ci+1)};
+  }
+  const hi=findHeaderRow(rows,h=>h.includes('advertised asin'));
+  if(hi<0) return {error:'No "Advertised product ID" (or "Advertised ASIN") column found. Use the Advertised product report.'};
+  const h=rows[hi].map(normH);
+  let spend=h.indexOf('spend'); if(spend<0) spend=h.indexOf('cost');
+  if(spend<0) return {error:'No "Spend" column found.'};
+  return {ix:{asin:h.indexOf('advertised asin'),spend,startI:h.indexOf('start date'),endI:h.indexOf('end date'),dateI:h.indexOf('date')},rows:rows.slice(hi+1)};
+}
+
+/* ---------- aggregation ---------- */
+/* hid = ad spend the host chose not to reveal on a client page. It is folded into one number so Total spend and TACOS stay correct without exposing SP/SD. */
+function mk(sales,units,orders,sessions,sp,sd,hid){
+  hid=hid||0;
+  const spend=sp+sd+hid;
+  return {sales,units,orders,sessions,sp,sd,spend,tacos:sales>0?spend/sales*100:null,cvr:sessions>0?units/sessions*100:null};
+}
+function agg(rows){
+  let sales=0,units=0,orders=0,sessions=0,sp=0,sd=0,hid=0;
+  for(const r of rows){sales+=r.sales||0;units+=r.units||0;orders+=r.orders||0;sessions+=r.sessions||0;sp+=r.sp||0;sd+=r.sd||0;hid+=r.hid||0;}
+  return mk(sales,units,orders,sessions,sp,sd,hid);
+}
+const tClass=t=>t==null?'':t<=20?'t-good':t<=22?'t-warn':'t-bad';
+function fv(k,a,cur,hasSD){
+  if(k==='sd'&&!hasSD) return '–';
+  const v=a[k];
+  if(k==='sales'||k==='sp'||k==='sd'||k==='spend') return cur+fmtNum(v,2);
+  if(k==='units'||k==='orders'||k==='sessions') return fmtNum(v,0);
+  if(k==='cvr') return v==null?'–':fmtNum(v,2)+'%';
+  if(k==='tacos') return v==null?'N/A':fmtNum(v,2)+'%';
+  return '';
+}
+function minMax(arr){let mn=arr[0],mx=arr[0];for(const d of arr){if(d<mn)mn=d;if(d>mx)mx=d;}return [mn,mx];}
+const ASIN_RE=/^[A-Z0-9]{8,14}$/;
+
+/* ---------- build the week from the three uploads ---------- */
+function build(mp){
+  const res={errors:[],lines:[],children:[],week:null,hasSD:false,unSp:0,unSd:0,ok:false};
+  const biz=P.biz;
+  if(!biz) return res;
+  if(biz.error){res.errors.push('Business Report: '+biz.error);return res;}
+  const eu=EU_DEC.has(mp), N=v=>parseNum(v,eu), NI=v=>parseNum(v,false), cur=curOf(mp), ix=biz.ix;
+  const kids=new Map();
+  for(const r of biz.rows){
+    const c=String(r[ix.child]==null?'':r[ix.child]).trim().toUpperCase();
+    if(!ASIN_RE.test(c)) continue;
+    let p=ix.parent>=0?String(r[ix.parent]==null?'':r[ix.parent]).trim().toUpperCase():'';
+    if(!ASIN_RE.test(p)) p=c;
+    let k=kids.get(c);
+    if(!k){k={p,c,t:ix.title>=0?String(r[ix.title]==null?'':r[ix.title]).trim().slice(0,90):'',sales:0,units:0,orders:0,sessions:0,sp:0,sd:0};kids.set(c,k);}
+    k.sales+=N(r[ix.sales])||0;
+    if(ix.units>=0) k.units+=NI(r[ix.units])||0;
+    if(ix.orders>=0) k.orders+=NI(r[ix.orders])||0;
+    if(ix.sessions>=0) k.sessions+=NI(r[ix.sessions])||0;
+  }
+  if(!kids.size){res.errors.push('Business Report: no child ASIN rows found.');return res;}
+  const bAll=agg([...kids.values()]);
+  res.lines.push(['Business Report',kids.size+' child ASINs · '+new Set([...kids.values()].map(k=>k.p)).size+' parents · Sales '+cur+fmtNum(bAll.sales,2)]);
+
+  const adSum=A=>{
+    const m=new Map();let tot=0;
+    for(const r of A.rows){
+      const a=String(r[A.ix.asin]==null?'':r[A.ix.asin]).trim().toUpperCase();
+      if(!ASIN_RE.test(a)) continue;
+      const s=N(r[A.ix.spend])||0;
+      m.set(a,(m.get(a)||0)+s);tot+=s;
+    }
+    return {m,tot};
+  };
+  let spS=null,sdS=null,sbTot=0;
+  if(!P.sp) res.errors.push('Add the advertised product report to continue.');
+  else if(P.sp.error) res.errors.push('Advertised product report: '+P.sp.error);
+  else if(P.sp.ix.combined){
+    /* One file holds SP, SD and SB. Split by the campaign-name prefix. SB has no product ID, so it cannot be tied to an ASIN and is left out of Total spend. */
+    const spM=new Map(),sdM=new Map();let spT=0,sdT=0;
+    for(const r of P.sp.rows){
+      const s0=parseNum(r[P.sp.ix.spend],false)||0;
+      const camp=String(r[P.sp.ix.camp]==null?'':r[P.sp.ix.camp]).trim().toUpperCase();
+      if(/^SB/.test(camp)){sbTot+=s0;continue;}
+      const a=String(r[P.sp.ix.asin]==null?'':r[P.sp.ix.asin]).trim().toUpperCase();
+      if(!ASIN_RE.test(a)) continue;
+      if(/^SD\b/.test(camp)){sdM.set(a,(sdM.get(a)||0)+s0);sdT+=s0;}
+      else{spM.set(a,(spM.get(a)||0)+s0);spT+=s0;}
+    }
+    spS={m:spM,tot:spT};sdS={m:sdM,tot:sdT};
+    if(P.sd) res.lines.push(['Separate SD report','Ignored. The combined report already includes Sponsored Display.']);
+  }
+  else{
+    spS=adSum(P.sp);
+    if(P.sd){ if(P.sd.error) res.errors.push('Sponsored Display: '+P.sd.error); else sdS=adSum(P.sd); }
+  }
+  if(spS) res.lines.push(['Sponsored Products',spS.m.size+' advertised ASINs · Spend '+cur+fmtNum(spS.tot,2)]);
+  if(sdS) res.lines.push(['Sponsored Display',sdS.m.size+' advertised ASINs · Spend '+cur+fmtNum(sdS.tot,2)]);
+  else if(!P.sd) res.lines.push(['Sponsored Display','Not uploaded. SD columns will show a dash for this week.']);
+  if(sbTot>0.005) res.lines.push(['Sponsored Brands',cur+fmtNum(sbTot,2)+' in the report has no product ID, so it is not included in Total spend or TACOS']);
+  if(res.errors.length) return res;
+
+  for(const [a,s] of spS.m){const k=kids.get(a);if(k)k.sp+=s;else res.unSp+=s;}
+  if(sdS) for(const [a,s] of sdS.m){const k=kids.get(a);if(k)k.sd+=s;else res.unSd+=s;}
+  res.hasSD=!!sdS;
+  if(res.unSp+res.unSd>0.005) res.lines.push(['Unmatched ad spend',cur+fmtNum(res.unSp+res.unSd,2)+' on ASINs that are not in the Business Report (not added to any row)']);
+
+  let list=[...kids.values()];
+  const tl=(tracked[mp]||[]);
+  if(tl.length){
+    const set=new Set(tl.map(x=>x.toUpperCase()));
+    const kept=list.filter(k=>set.has(k.p)||set.has(k.c));
+    res.lines.push(['Tracked parents ('+mp+')','Kept '+kept.length+' of '+list.length+' child ASINs']);
+    list=kept;
+  }
+  if(!list.length){res.errors.push('None of the Business Report rows match the tracked parent ASINs for '+mp+'.');return res;}
+  res.children=list.map(k=>({p:k.p,c:k.c,t:k.t,sales:+k.sales.toFixed(2),units:k.units,orders:k.orders,sessions:k.sessions,sp:+k.sp.toFixed(2),sd:+k.sd.toFixed(2)}));
+  const tot=agg(res.children);
+  res.lines.push(['Combined TACOS',(tot.tacos==null?'N/A':fmtNum(tot.tacos,2)+'%')+' · Total spend '+cur+fmtNum(tot.spend,2)+' ÷ Sales '+cur+fmtNum(tot.sales,2)]);
+
+  const ds=[],de=[];
+  for(const A of [P.sp,P.sd]){
+    if(!A||A.error) continue;
+    const {startI,endI,dateI,range}=A.ix;
+    for(const r of A.rows){
+      if(range>=0){const pr=String(r[range]==null?'':r[range]).split(/\s+-\s+/);const a=toDate(pr[0]),b=toDate(pr[1]);if(a)ds.push(a);if(b)de.push(b);}
+      if(startI>=0){const a=toDate(r[startI]);if(a)ds.push(a);}
+      if(endI>=0){const b=toDate(r[endI]);if(b)de.push(b);}
+      if(startI<0&&dateI>=0){const d=toDate(r[dateI]);if(d){ds.push(d);de.push(d);}}
+    }
+  }
+  if(ds.length){
+    const a=minMax(ds)[0], b=de.length?minMax(de)[1]:minMax(ds)[1];
+    res.week={startDate:isoOf(a),label:labelOf(a,b)};
+  }
+  res.ok=true;
+  return res;
+}
+
+function refreshPreview(){
+  const mp=$('upMp').value, box=$('preview');
+  if(!P.biz&&!P.sp&&!P.sd){box.innerHTML='';$('saveBtn').disabled=true;built=null;return;}
+  if(!mp){box.innerHTML='<div class="errline">Pick the marketplace so numbers like 1.234,56 are read correctly.</div>';$('saveBtn').disabled=true;built=null;return;}
+  if(!P.biz){box.innerHTML='<div class="errline">Add the Business Report to continue.</div>';$('saveBtn').disabled=true;built=null;return;}
+  built=build(mp);
+  let h='';
+  for(const [k,v] of built.lines) h+='<dt>'+esc(k)+'</dt><dd>'+esc(v)+'</dd>';
+  for(const e of built.errors) h+='<div class="errline">'+esc(e)+'</div>';
+  box.innerHTML=h;
+  if(built.week&&!dateTouched){$('weekDate').value=built.week.startDate;$('weekLabel').value=built.week.label;}
+  updateSaveEnabled();
+}
+function updateSaveEnabled(){
+  $('saveBtn').disabled=!(built&&built.ok&&$('upMp').value&&$('weekDate').value);
+}
+function guessMp(name){
+  const m=String(name).toUpperCase().match(/(?:^|[^A-Z])(DE|UK|GB|FR|IT|ES|NL|BE|PL|SE|US|CA)(?:[^A-Z]|$)/);
+  if(!m) return '';
+  return m[1]==='GB'?'UK':m[1];
+}
+async function onFile(key,file){
+  if(!file){P[key]=null;refreshPreview();return;}
+  $('upStatus').className='status';$('upStatus').textContent='Reading '+file.name+'…';
+  try{
+    const rows=await readRows(file);
+    P[key]=key==='biz'?parseBusiness(rows):parseAds(rows);
+  }catch(err){P[key]={error:'Could not read this file ('+(err.message||err)+').'};}
+  if(!$('upMp').value&&P[key]&&P[key].ix&&P[key].ix.mkt>=0){
+    const rw=P[key].rows.find(r=>String(r[P[key].ix.mkt]||'').trim());
+    if(rw){let c=String(rw[P[key].ix.mkt]).trim().toUpperCase().replace('AMAZON_','');if(c==='GB')c='UK';if(MPS.includes(c))$('upMp').value=c;}
+  }
+  if(!$('upMp').value){const g=guessMp(file.name);if(g)$('upMp').value=g;}
+  $('upStatus').textContent='';
+  refreshPreview();
+}
+
+/* ---------- storage (Netlify Function + Blobs) ---------- */
+const LSK='rocketiseTacos.static.v1';
+function lsAll(){try{return JSON.parse(lsGet(LSK)||'null')||{clients:{},weeks:{},tracked:{}};}catch(e){return {clients:{},weeks:{},tracked:{}};}}
+function lsSave(o){
+  try{localStorage.setItem(LSK,JSON.stringify(o));}
+  catch(e){throw new Error('This browser blocked saving. Allow site data for this page and try again.');}
+}
+async function api(method,path,body,noAuth){
+  const h={'content-type':'application/json'};
+  if(!noAuth) h['x-admin-password']=adminPw;
+  let r;
+  try{r=await fetch('/api/'+path,{method,headers:h,body:body==null?undefined:JSON.stringify(body)});}
+  catch(e){const er=new Error('No connection to the server');er.status=0;throw er;}
+  let d=null;try{d=await r.json();}catch(e){}
+  if(!r.ok){const er=new Error((d&&d.error)||('Request failed ('+r.status+')'));er.status=r.status;throw er;}
+  return d;
+}
+async function putClient(id,name){
+  const c=await api('PUT','clients/'+id,{name});
+  clients[id]={name:c.name,shareToken:c.shareToken,shown:c.shown};
+  renderClientSel();
+}
+async function putWeek(id,doc){
+  await api('PUT','weeks/'+clientId+'/'+id,doc);
+  weeks=weeks.filter(w=>(w.marketplace+'__'+w.startDate)!==id).concat([doc]);
+}
+async function delWeek(id){
+  await api('DELETE','weeks/'+clientId+'/'+id);
+  weeks=weeks.filter(w=>(w.marketplace+'__'+w.startDate)!==id);
+  onWeeks();
+}
+async function putTracked(obj){
+  await api('PUT','tracked/'+clientId,obj);
+}
+async function loadClients(){
+  const d=await api('GET','clients');
+  clients={};
+  d.clients.forEach(c=>{clients[c.id]={name:c.name,shareToken:c.shareToken,shown:c.shown};});
+  renderClientSel();
+}
+async function loadClientData(){
+  try{
+    const d=await api('GET',shareToken?('data?token='+encodeURIComponent(shareToken)):('data?client='+encodeURIComponent(clientId)));
+    if(shareToken){clientId=d.client.id;clients={};clients[clientId]={name:d.client.name};}
+    else clients[clientId]=Object.assign({},clients[clientId]||{},{name:d.client.name,shareToken:d.client.shareToken,shown:d.client.shown});
+    weeks=d.weeks||[];tracked=d.tracked||{};
+    syncTracked();onWeeks();
+  }catch(err){
+    if(err.status===401&&!shareToken){signOut();return;}
+    weeks=[];renderAll();
+    setFoot(err.status===404?'This link is not valid any more. Ask for a new client link.':'Could not load data: '+err.message);
+  }
+}
+function selectClient(id){
+  clientId=id||'';
+  if(clientId) lsSet(LS_CLIENT,clientId);
+  weeks=[];tracked={};openedOnce=false;selMp='';expanded=new Set();
+  trend={metric:trend.metric,scope:'ALL'};
+  if(!clientId){renderAll();return;}
+  syncExportChips();
+  loadClientData();
+}
+function setFoot(t){$('foot').textContent=t;}
+function lock(){
+  document.body.classList.add('locked');
+  $('loginForm').hidden=false;$('pw').focus();
+}
+function signOut(){ssSet(SS_PW,null);adminPw='';location.reload();}
+async function enterAdmin(){
+  await loadClients();
+  canEdit=true;
+  document.body.classList.remove('locked');
+  $('loginForm').hidden=true;
+  applyMode();
+  setFoot('Saved on the server. Client links show new data as soon as you save a week.');
+  const ids=Object.keys(clients).sort((a,b)=>(clients[a].name||a).localeCompare(clients[b].name||b));
+  const last=lsGet(LS_CLIENT);
+  selectClient((last&&clients[last])?last:(ids[0]||''));
+}
+
+/* ---------- client switcher ---------- */
+function renderClientSel(){
+  const sel=$('clientSel');
+  const ids=Object.keys(clients).sort((a,b)=>(clients[a].name||a).localeCompare(clients[b].name||b));
+  sel.innerHTML=ids.length?ids.map(id=>'<option value="'+esc(id)+'"'+(id===clientId?' selected':'')+'>'+esc(clients[id].name||id)+'</option>').join(''):'<option value="">No clients yet</option>';
+  const name=clients[clientId]&&clients[clientId].name;
+  const clientView=document.body.classList.contains('client');
+  $('eyebrow').textContent=clientView?'Weekly TACOS report':'Rocketise';
+  $('h1').textContent=clientView&&name?name:'TACOS Tracker';
+  $('shareRow').hidden=!clientId;
+  $('shareHint').textContent=clientId?'Read-only client link for '+(name||clientId)+'. It shows this client only.':'';
+}
+function applyMode(){
+  const m=location.hash.match(/^#client-([a-f0-9]{32})$/i);
+  hashClient=!!m;
+  /* Preview client view: apply the "Client page shows" choices live. Snapshot pages keep the set they were exported with. */
+  if(!snapMode){
+    HIDDEN.clear();
+    if(previewMode) document.querySelectorAll('#exportChips [data-x]:not(:checked)').forEach(c=>HIDDEN.add(c.dataset.x));
+    document.querySelectorAll('#metricChips .chip').forEach(l=>{const i=l.querySelector('[data-m]');l.hidden=!!(i&&HIDDEN.has(i.dataset.m));});
+  }
+  document.body.classList.toggle('client',hashClient||previewMode||snapMode);
+  document.body.classList.toggle('readonly',!canEdit);
+  $('exitPreview').hidden=!(previewMode&&!hashClient&&!snapMode);
+  renderClientSel();
+}
+
+/* ---------- tracker rendering ---------- */
+const weeksOf=mp=>weeks.filter(w=>w.marketplace===mp).sort((a,b)=>String(a.startDate).localeCompare(String(b.startDate)));
+const mpsPresent=()=>MPS.filter(mp=>weeks.some(w=>w.marketplace===mp));
+function onWeeks(){
+  if(!openedOnce){openedOnce=true;if(!weeks.length&&$('uploadPanel'))$('uploadPanel').open=true;}
+  const pres=mpsPresent();
+  if(!pres.includes(selMp)) selMp=pres[0]||'';
+  renderAll();renderSavedChips();
+}
+function renderAll(){renderClientSel();renderTabs();renderTrend();renderTable();}
+function renderTabs(){
+  const pres=mpsPresent();
+  $('mpTabs').innerHTML=pres.map(mp=>'<button class="tab" role="tab" type="button" data-mp="'+mp+'" aria-selected="'+(mp===selMp)+'">'+mp+'</button>').join('');
+  $('controls').hidden=!pres.length;
+  document.querySelector('.legend-t').hidden=!pres.length;
+}
+const CARET='<svg viewBox="0 0 10 10" aria-hidden="true"><path d="M3 1.5 7 5 3 8.5" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg>';
+function emptyState(){
+  const clientView=document.body.classList.contains('client');
+  if(!clientId&&!shareToken) return '<div class="empty"><strong>No clients yet</strong>Use + Client to add one, then upload this week\'s reports.</div>';
+  if(clientView) return '<div class="empty"><strong>No weeks yet</strong>Reports will appear here once the first week is added.</div>';
+  return '<div class="empty"><strong>No weeks saved for this client</strong>Open "Upload this week\'s reports", add the Business Report and the advertised product report, then save the week.</div>';
+}
+function renderTable(){
+  const el=$('tableArea');
+  const all=weeksOf(selMp);
+  if(!all.length){el.innerHTML=emptyState();return;}
+  const vis=weeksShown>0?all.slice(-weeksShown):all;
+  const ms=METRICS.filter(m=>metricsOn.has(m.k)&&!HIDDEN.has(m.k));
+  if(!ms.length){el.innerHTML='<div class="empty">Select at least one column.</div>';return;}
+  const cur=curOf(selMp);
+  const parents=new Map();
+  for(const w of vis) for(const r of w.children){
+    let p=parents.get(r.p); if(!p){p={id:r.p,kids:new Map()};parents.set(r.p,p);}
+    let k=p.kids.get(r.c); if(!k){k={id:r.c,title:''};p.kids.set(r.c,k);}
+    if(r.t) k.title=r.t;
+  }
+  const idx=vis.map(w=>{
+    const cm=new Map(),pm=new Map();
+    for(const r of w.children){cm.set(r.c,r);if(!pm.has(r.p))pm.set(r.p,[]);pm.get(r.p).push(r);}
+    return {w,cm,pm};
+  });
+  const last=idx[idx.length-1];
+  const psales=pid=>agg(last.pm.get(pid)||[]).sales;
+  const plist=[...parents.values()].sort((a,b)=>psales(b.id)-psales(a.id)||a.id.localeCompare(b.id));
+  let h='<div class="tablewrap"><table><thead><tr><th rowspan="2">Parent / child ASIN</th>';
+  for(const x of idx) h+='<th class="wkh wk" colspan="'+ms.length+'">'+esc(x.w.label||x.w.startDate)+'</th>';
+  h+='</tr><tr>';
+  for(const x of idx) h+=ms.map((m,i)=>'<th class="'+(i===0?'wk':'')+'">'+m.l+'</th>').join('');
+  h+='</tr></thead><tbody>';
+  const cells=(rowsByWeek,cls)=>idx.map((x,wi)=>{
+    const rows=rowsByWeek(x);
+    return ms.map((m,i)=>{
+      const first=i===0?' wk':'';
+      if(!rows||!rows.length) return '<td class="'+first+'">–</td>';
+      const a=agg(rows), t=m.k==='tacos'?' '+tClass(a.tacos):'';
+      const txt=esc(fv(m.k,a,cur,x.w.hasSD!==false));
+      return '<td class="'+(first+t).trim()+'">'+(m.k==='tacos'?'<span class="pill">'+txt+'</span>':txt)+'</td>';
+    }).join('');
+  }).join('');
+  h+='<tr class="r-total"><td><div class="cell1"><div class="idblock"><span class="asin">All tracked parents</span><span class="ttl">'+parents.size+' parents · combined</span></div></div></td>'+cells(x=>x.w.children)+'</tr>';
+  for(const p of plist){
+    const key=selMp+'|'+p.id, open=expanded.has(key);
+    const klist=[...p.kids.values()].sort((a,b)=>{
+      const sa=last.cm.get(a.id)?last.cm.get(a.id).sales:0, sb=last.cm.get(b.id)?last.cm.get(b.id).sales:0;
+      return sb-sa||a.id.localeCompare(b.id);
+    });
+    const top=klist.find(k=>k.title)||{title:''};
+    h+='<tr class="r-parent"><td><div class="cell1"><button class="caret" type="button" data-p="'+esc(key)+'" aria-expanded="'+open+'" aria-label="'+(open?'Collapse':'Expand')+' '+klist.length+' child ASINs of '+esc(p.id)+'">'+CARET+'</button><div class="idblock"><span class="asin">'+esc(p.id)+'</span><span class="ttl" title="'+esc(top.title)+'">'+esc(top.title)+'</span></div><span class="count" title="Child ASINs">'+klist.length+'</span></div></td>'+cells(x=>x.pm.get(p.id))+'</tr>';
+    if(open) for(const k of klist){
+      h+='<tr class="r-child"><td><div class="cell1"><div class="idblock"><span class="asin">'+esc(k.id)+'</span><span class="ttl" title="'+esc(k.title)+'">'+esc(k.title)+'</span></div></div></td>'+cells(x=>{const r=x.cm.get(k.id);return r?[r]:null;})+'</tr>';
+    }
+  }
+  h+='</tbody></table></div>';
+  el.innerHTML=h;
+}
+
+/* ---------- trend chart ---------- */
+function niceScale(max){
+  if(!(max>0)) return {step:1,n:4};
+  const base=Math.pow(10,Math.floor(Math.log10(max/5)));
+  for(const m of [1,2,2.5,5,10,20,25,50]){const s=m*base;if(Math.ceil(max/s)<=5) return {step:s,n:Math.max(1,Math.ceil(max/s))};}
+  return {step:max/4,n:4};
+}
+function compact(v){
+  const a=Math.abs(v);
+  if(a>=1e6) return (v/1e6).toFixed(a>=1e7?0:1).replace(/\.0$/,'')+'M';
+  if(a>=1e3) return (v/1e3).toFixed(a>=1e4?0:1).replace(/\.0$/,'')+'k';
+  return String(Math.round(v*100)/100);
+}
+function renderTrend(){
+  const el=$('trendArea');
+  const all=weeksOf(selMp);
+  const tms=TREND_METRICS.filter(m=>!HIDDEN.has(m.k));
+  if(!all.length||!tms.length){el.innerHTML='';return;}
+  if(!tms.some(m=>m.k===trend.metric)) trend.metric=tms[0].k;
+  const cur=curOf(selMp);
+  const sales=new Map(),ptitle=new Map(),ctitle=new Map(),cparent=new Map();
+  for(const w of all) for(const r of w.children){
+    sales.set('P:'+r.p,(sales.get('P:'+r.p)||0)+(r.sales||0));
+    sales.set('C:'+r.c,(sales.get('C:'+r.c)||0)+(r.sales||0));
+    if(r.t){ctitle.set(r.c,r.t);if(!ptitle.has(r.p))ptitle.set(r.p,r.t);}
+    cparent.set(r.c,r.p);
+  }
+  const keys=pre=>[...sales.keys()].filter(k=>k.startsWith(pre)).sort((a,b)=>sales.get(b)-sales.get(a));
+  const pk=keys('P:'),ck=keys('C:');
+  if(trend.scope!=='ALL'&&!sales.has(trend.scope)) trend.scope='ALL';
+  const opt=(k,l)=>'<option value="'+esc(k)+'"'+(k===trend.scope?' selected':'')+'>'+esc(l)+'</option>';
+  const scopeSel='<select id="trScope" aria-label="Chart scope">'+opt('ALL','All tracked parents')+
+    '<optgroup label="Parent ASINs">'+pk.map(k=>opt(k,k.slice(2)+(ptitle.get(k.slice(2))?' · '+ptitle.get(k.slice(2)).slice(0,40):''))).join('')+'</optgroup>'+
+    '<optgroup label="Child ASINs">'+ck.map(k=>opt(k,k.slice(2)+(ctitle.get(k.slice(2))?' · '+ctitle.get(k.slice(2)).slice(0,40):''))).join('')+'</optgroup></select>';
+  const segs='<div class="seg" role="group" aria-label="Chart metric">'+TREND_METRICS.filter(m=>!HIDDEN.has(m.k)).map(m=>'<button type="button" data-tm="'+m.k+'" aria-pressed="'+(m.k===trend.metric)+'">'+m.l+'</button>').join('')+'</div>';
+
+  const pts=all.map(w=>{
+    let rows=w.children;
+    if(trend.scope.startsWith('P:')) rows=rows.filter(r=>r.p===trend.scope.slice(2));
+    else if(trend.scope.startsWith('C:')) rows=rows.filter(r=>r.c===trend.scope.slice(2));
+    const a=agg(rows);
+    return {w,a,has:rows.length>0,v:rows.length?a[trend.metric]:null};
+  });
+  const vals=pts.map(p=>p.v).filter(v=>v!=null&&isFinite(v));
+  const W=Math.max(300,Math.round((el.clientWidth||680)-26)),H=210,L=50,R=16,T=12,B=30;
+  let svg='';
+  if(!vals.length){
+    svg='<div class="empty">No data for this selection.</div>';
+  }else{
+    let mx=Math.max(...vals)*1.1;
+    if(trend.metric==='tacos') mx=Math.max(mx,24);
+    const sc=niceScale(mx),top=sc.step*sc.n;
+    const y=v=>T+(H-T-B)*(1-v/top);
+    const x=i=>pts.length<2?(L+W-R)/2:L+i*(W-L-R)/(pts.length-1);
+    const fmtTick=v=>trend.metric==='tacos'||trend.metric==='cvr'?(+v.toFixed(4))+'%':trend.metric==='units'?compact(v):cur+compact(v);
+    svg='<svg class="chart" viewBox="0 0 '+W+' '+H+'" role="img" aria-label="Weekly '+esc(trend.metric)+' trend">';
+    if(trend.metric==='tacos'){
+      svg+='<rect x="'+L+'" y="'+y(Math.min(22,top)).toFixed(1)+'" width="'+(W-L-R)+'" height="'+Math.max(0,y(20)-y(Math.min(22,top))).toFixed(1)+'" fill="var(--warn-bg)"/>';
+      if(top>22) svg+='<rect x="'+L+'" y="'+y(top).toFixed(1)+'" width="'+(W-L-R)+'" height="'+(y(22)-y(top)).toFixed(1)+'" fill="var(--bad-bg)" opacity=".55"/>';
+    }
+    for(let g=0;g<=sc.n;g++){
+      const v=g*sc.step,yy=y(v);
+      svg+='<line x1="'+L+'" x2="'+(W-R)+'" y1="'+yy.toFixed(1)+'" y2="'+yy.toFixed(1)+'" stroke="var(--border)"/>';
+      svg+='<text x="'+(L-6)+'" y="'+(yy+3).toFixed(1)+'" text-anchor="end">'+esc(fmtTick(v))+'</text>';
+    }
+    const every=Math.max(1,Math.ceil(pts.length/Math.max(1,Math.floor((W-L-R)/62))));
+    pts.forEach((p,i)=>{if(i%every===0||i===pts.length-1)svg+='<text x="'+x(i).toFixed(1)+'" y="'+(H-10)+'" text-anchor="middle">'+esc(shortDay(p.w.startDate))+'</text>';});
+    let seg=[];const segs2=[];
+    pts.forEach((p,i)=>{if(p.v==null||!isFinite(p.v)){if(seg.length)segs2.push(seg);seg=[];}else seg.push([x(i),y(p.v)]);});
+    if(seg.length)segs2.push(seg);
+    for(const s of segs2) if(s.length>1) svg+='<polyline fill="none" stroke="var(--accent)" stroke-width="2" stroke-linejoin="round" points="'+s.map(q=>q[0].toFixed(1)+','+q[1].toFixed(1)).join(' ')+'"/>';
+    pts.forEach((p,i)=>{if(p.v!=null&&isFinite(p.v)){const lastPt=i===pts.length-1;svg+='<circle cx="'+x(i).toFixed(1)+'" cy="'+y(p.v).toFixed(1)+'" r="'+(lastPt?4.5:3)+'" fill="var(--accent)" stroke="var(--card)" stroke-width="1.5"/>';}});
+    const bw=pts.length<2?W:(W-L-R)/(pts.length-1);
+    pts.forEach((p,i)=>{svg+='<line class="gl" data-i="'+i+'" x1="'+x(i).toFixed(1)+'" x2="'+x(i).toFixed(1)+'" y1="'+T+'" y2="'+(H-B)+'" stroke="var(--sub)" stroke-dasharray="3 3" style="display:none" pointer-events="none"/>';});
+    pts.forEach((p,i)=>{svg+='<rect class="band" data-i="'+i+'" x="'+(x(i)-bw/2).toFixed(1)+'" y="0" width="'+bw.toFixed(1)+'" height="'+H+'" fill="transparent"/>';});
+    svg+='</svg>';
+  }
+  el.innerHTML='<div class="trend"><div class="controls">'+segs+scopeSel+'</div>'+svg+'<div class="tip" id="tip"></div></div>';
+  const box=el.querySelector('.trend'),tip=$('tip');
+  el.querySelectorAll('[data-tm]').forEach(b=>b.onclick=()=>{trend.metric=b.dataset.tm;renderTrend();});
+  $('trScope').onchange=e=>{trend.scope=e.target.value;renderTrend();};
+  const show=(e,i)=>{
+    const p=pts[i];
+    let t='<b>'+esc(p.w.label||p.w.startDate)+'</b>';
+    if(!p.has) t+='<div>No data this week</div>';
+    else{
+      const a=p.a,hs=p.w.hasSD!==false;
+      if(!HIDDEN.has('sales')) t+='<div>Sales <span class="n">'+esc(cur+fmtNum(a.sales,2))+'</span></div>';
+      if(!HIDDEN.has('units')) t+='<div>Units <span class="n">'+fmtNum(a.units)+'</span></div>';
+      if(!HIDDEN.has('spend')) t+='<div>Spend <span class="n">'+esc(cur+fmtNum(a.spend,2))+'</span>'+''+'</div>';
+      if(!HIDDEN.has('tacos')) t+='<div>TACOS <span class="n">'+(a.tacos==null?'N/A':fmtNum(a.tacos,2)+'%')+'</span></div>';
+    }
+    tip.innerHTML=t;tip.style.display='block';
+    const r=box.getBoundingClientRect();
+    let lx=e.clientX-r.left+14;
+    if(lx+tip.offsetWidth>r.width) lx=e.clientX-r.left-tip.offsetWidth-14;
+    tip.style.left=Math.max(4,lx)+'px';tip.style.top=(e.clientY-r.top+14)+'px';
+    el.querySelectorAll('.gl').forEach(g=>{g.style.display=(+g.dataset.i===i)?'':'none';});
+  };
+  const hide=()=>{tip.style.display='none';el.querySelectorAll('.gl').forEach(g=>{g.style.display='none';});};
+  el.querySelectorAll('.band').forEach(b=>{const i=+b.dataset.i;b.addEventListener('mousemove',e=>show(e,i));b.addEventListener('click',e=>show(e,i));b.addEventListener('mouseleave',hide);});
+}
+
+/* ---------- saved weeks + tracked list ---------- */
+let armedDel=null,armedTimer=null;
+function renderSavedChips(){
+  const mp=$('upMp').value;
+  const list=mp?weeksOf(mp):[];
+  $('savedWeeks').innerHTML=list.length?list.map(w=>'<button type="button" class="chip del'+(armedDel===w.marketplace+'__'+w.startDate?' armed':'')+'" data-del="'+esc(w.marketplace+'__'+w.startDate)+'">'+esc(w.label||w.startDate)+' <span aria-hidden="true">'+(armedDel===w.marketplace+'__'+w.startDate?'Click again to delete':'×')+'</span></button>').join(''):'<span class="hint">'+(mp?'No weeks saved for '+mp+' yet.':'Pick a marketplace to see its saved weeks.')+'</span>';
+}
+function syncTracked(){
+  const ta=$('trList');
+  if(document.activeElement===ta) return;
+  ta.value=(tracked[$('trMp').value]||[]).join('\n');
+}
+async function saveWeek(){
+  const mp=$('upMp').value,startDate=$('weekDate').value,label=$('weekLabel').value.trim()||startDate;
+  const st=$('upStatus');st.className='status';
+  if(!clientId){st.className='status err';st.textContent='Add or pick a client first.';return;}
+  if(!built||!built.ok||!mp||!startDate){return;}
+  const doc={marketplace:mp,label,startDate,hasSD:built.hasSD,children:built.children,unmatchedSp:+built.unSp.toFixed(2),unmatchedSd:+built.unSd.toFixed(2),savedAt:new Date().toISOString()};
+  if(JSON.stringify(doc).length>240000){st.className='status err';st.textContent='This week is too large to store. Add a tracked parent list for '+mp+' to keep only the ASINs you need.';return;}
+  $('saveBtn').disabled=true;
+  try{
+    await putWeek(mp+'__'+startDate,doc);
+    const tot=agg(doc.children);
+    st.textContent='Saved '+mp+' · '+label+' · '+doc.children.length+' child ASINs · TACOS '+(tot.tacos==null?'N/A':fmtNum(tot.tacos,2)+'%');
+    selMp=mp;
+    ['fBiz','fSp'].forEach(id=>{$(id).value='';});
+    P={biz:null,sp:null,sd:null};built=null;dateTouched=false;
+    $('preview').innerHTML='';
+    renderAll();renderSavedChips();
+  }catch(err){st.className='status err';st.textContent='Could not save: '+((err&&err.message)||err);$('saveBtn').disabled=false;}
+}
+async function saveTracked(){
+  const mp=$('trMp').value,st=$('trStatus');st.className='status';
+  if(!clientId){st.className='status err';st.textContent='Add or pick a client first.';return;}
+  const list=[...new Set($('trList').value.split(/[\s,;]+/).map(s=>s.trim().toUpperCase()).filter(Boolean))];
+  const next=Object.assign({},tracked);next[mp]=list;next.updatedAt=new Date().toISOString();
+  try{await putTracked(next);tracked=next;st.textContent=list.length?'Saved '+list.length+' parent ASINs for '+mp+'. New uploads for '+mp+' keep only these.':'List cleared for '+mp+'. New uploads keep every ASIN.';}
+  catch(err){st.className='status err';st.textContent='Could not save: '+((err&&err.message)||err);}
+}
+let cleanArmed=false,cleanTimer=null;
+async function cleanup(){
+  const btn=$('cleanBtn'),st=$('trStatus');st.className='status';
+  if(!cleanArmed){cleanArmed=true;btn.textContent='Click again to remove';clearTimeout(cleanTimer);cleanTimer=setTimeout(()=>{cleanArmed=false;btn.textContent='Remove untracked ASINs from saved weeks';},4000);return;}
+  cleanArmed=false;btn.textContent='Remove untracked ASINs from saved weeks';btn.disabled=true;
+  let wk=0,rows=0;
+  try{
+    for(const w of weeks){
+      const tl=tracked[w.marketplace]||[];
+      if(!tl.length) continue;
+      const set=new Set(tl.map(s=>s.toUpperCase()));
+      const kept=w.children.filter(r=>set.has(r.p)||set.has(r.c));
+      if(kept.length!==w.children.length){rows+=w.children.length-kept.length;wk++;await putWeek(w.marketplace+'__'+w.startDate,Object.assign({},w,{children:kept}));}
+    }
+    st.textContent=rows?'Removed '+rows+' untracked rows from '+wk+' saved week(s).':'Nothing to remove. Saved weeks already match each marketplace list (marketplaces without a list are left alone).';
+  }catch(err){st.className='status err';st.textContent='Could not clean up: '+((err&&err.message)||err);}
+  btn.disabled=false;
+}
+
+
+/* ---------- what each client may see (saved per client) ---------- */
+function colsFor(cid){
+  const a=clients[cid]&&clients[cid].shown;
+  return new Set(Array.isArray(a)?a:METRICS.map(m=>m.k));
+}
+function syncExportChips(){
+  const on=colsFor(clientId);
+  document.querySelectorAll('#exportChips [data-x]').forEach(c=>{c.checked=on.has(c.dataset.x);});
+}
+/* Build one read-only client page from the page source. Hidden numbers are removed from the file itself. */
+function makeClientHtml(src,cid,name,wk,shown){
+  const hide=METRICS.map(m=>m.k).filter(k=>!shown.has(k));
+  const keepSpend=shown.has('spend')||shown.has('tacos');
+  const cw=wk.map(w=>{
+    const o=Object.assign({},w);
+    delete o.unmatchedSp;delete o.unmatchedSd;
+    o.children=w.children.map(r=>{
+      const c=Object.assign({},r);let hid=c.hid||0;
+      if(!shown.has('sp')){hid+=c.sp||0;c.sp=0;}
+      if(!shown.has('sd')){hid+=c.sd||0;c.sd=0;}
+      if(!shown.has('units')&&!shown.has('cvr')) c.units=0;
+      if(!shown.has('orders')) c.orders=0;
+      if(!shown.has('sessions')&&!shown.has('cvr')) c.sessions=0;
+      if(!shown.has('sales')&&!shown.has('tacos')) c.sales=0;
+      if(keepSpend&&hid) c.hid=+hid.toFixed(2);else delete c.hid;
+      if(!keepSpend){c.sp=0;c.sd=0;}
+      return c;
+    });
+    return o;
+  });
+  const snap={client:{id:cid,name:name},weeks:cw,hide:hide,generatedAt:new Date().toISOString()};
+  const json=JSON.stringify(snap).replace(/</g,'\\u003c').replace(/\u2028|\u2029/g,' ');
+  const marker='<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx';
+  if(src.indexOf(marker)<0) throw new Error('page layout not recognised');
+  return src.replace(marker,()=>'<script id="snapshot" type="application/json">'+json+'<\/script>\n'+marker)
+            .replace('<title>Rocketise TACOS Tracker</title>',()=>'<title>'+esc(name)+' TACOS Report</title>');
+}
+async function pageSource(){
+  const r=await fetch(location.origin+location.pathname,{cache:'no-store'});
+  if(!r.ok) throw new Error('could not read the page source');
+  const t=await r.text();
+  if(snapMode) throw new Error('this is a client page, not the admin page');
+  return t;
+}
+function download(blob,name){
+  const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download=name;
+  document.body.appendChild(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(a.href),1500);
+}
+
+/* ---------- wiring ---------- */
+function buildStatic(){
+  $('upMp').innerHTML='<option value="">Select…</option>'+MPS.map(m=>'<option>'+m+'</option>').join('');
+  $('trMp').innerHTML=MPS.map(m=>'<option>'+m+'</option>').join('');
+  $('metricChips').insertAdjacentHTML('beforeend',METRICS.map(m=>'<label class="chip"><input type="checkbox" data-m="'+m.k+'"'+(metricsOn.has(m.k)?' checked':'')+'><span>'+m.l+'</span></label>').join(''));
+  $('weeksSel').value=String(weeksShown);
+  $('exportChips').innerHTML=METRICS.map(m=>'<label class="chip"><input type="checkbox" data-x="'+m.k+'"><span>'+m.l+'</span></label>').join('');
+  syncExportChips();
+  $('exportChips').addEventListener('change',async()=>{
+    if(!clientId||!clients[clientId]) return;
+    const arr=[...document.querySelectorAll('#exportChips [data-x]:checked')].map(c=>c.dataset.x);
+    clients[clientId].shown=arr;
+    const st=$('shareStatus');st.className='status';
+    try{await api('PUT','cols/'+clientId,{shown:arr});st.textContent='Saved. The client link updates right away.';}
+    catch(err){st.className='status err';st.textContent='Could not save: '+err.message;}
+  });
+}
+function bind(){
+  $('clientSel').onchange=e=>selectClient(e.target.value);
+  $('newClientBtn').onclick=()=>{$('newClientForm').hidden=false;$('clientName').focus();};
+  $('cancelClient').onclick=()=>{$('newClientForm').hidden=true;$('clientStatus').textContent='';};
+  $('newClientForm').addEventListener('submit',async e=>{
+    e.preventDefault();
+    const name=$('clientName').value.trim(),id=slug(name),st=$('clientStatus');
+    if(!id){st.className='status err';st.textContent='Enter a client name.';return;}
+    try{
+      if(!clients[id]) await putClient(id,name);
+      $('clientName').value='';st.textContent='';$('newClientForm').hidden=true;
+      selectClient(id);
+    }catch(err){st.className='status err';st.textContent='Could not add client: '+((err&&err.message)||err);}
+  });
+  $('previewBtn').onclick=()=>{previewMode=true;applyMode();renderAll();window.scrollTo(0,0);};
+  $('exitPreview').onclick=()=>{previewMode=false;applyMode();renderAll();};
+  window.addEventListener('hashchange',()=>location.reload());
+  $('loginForm').addEventListener('submit',async e=>{
+    e.preventDefault();
+    const st=$('loginStatus');st.className='status';st.textContent='Checking…';
+    adminPw=$('pw').value;
+    try{await enterAdmin();ssSet(SS_PW,adminPw);$('pw').value='';st.textContent='';checkMigrate();}
+    catch(err){adminPw='';st.className='status err';st.textContent=err.status===401?'Wrong password.':('Could not sign in: '+err.message);}
+  });
+  $('signOutBtn').onclick=signOut;
+  $('clientPageBtn').onclick=async()=>{
+    const st=$('backupStatus');st.className='status admin';
+    if(!clientId||!clients[clientId]){st.className='status admin err';st.textContent='Pick a client first.';return;}
+    if(!weeks.length){st.className='status admin err';st.textContent='This client has no saved weeks yet.';return;}
+    try{
+      const shown=colsFor(clientId);
+      if(!shown.size) throw new Error('tick at least one metric under "Client page shows"');
+      const html=makeClientHtml(await pageSource(),clientId,clients[clientId].name,weeks,shown);
+      download(new Blob([html],{type:'text/html'}),'tacos-'+clientId+'.html');
+      st.textContent='Downloaded tacos-'+clientId+'.html. For one link per client on a single site, use "Export site (all clients)" instead.';
+    }catch(err){st.className='status admin err';st.textContent='Could not export: '+err.message+'. Open the deployed site (not a saved file) and try again.';}
+  };
+  $('siteBtn').onclick=async()=>{
+    const st=$('backupStatus');st.className='status admin';
+    try{
+      if(typeof JSZip==='undefined') throw new Error('zip library did not load (check your internet connection)');
+      const o=lsAll(),src=await pageSource(),zip=new JSZip(),links=[];
+      zip.file('index.html',src);
+      zip.file('_headers','/*\n  X-Robots-Tag: noindex, nofollow\n  Referrer-Policy: no-referrer\n');
+      for(const cid of Object.keys(o.clients)){
+        const wk=Object.values(o.weeks[cid]||{});
+        if(!wk.length) continue;
+        const shown=colsFor(cid);
+        if(!shown.size) throw new Error('tick at least one metric for '+o.clients[cid].name);
+        zip.file('client/'+cid+'/index.html',makeClientHtml(src,cid,o.clients[cid].name,wk,shown));
+        links.push(location.origin+'/client/'+cid);
+      }
+      if(!links.length) throw new Error('no client has saved weeks yet');
+      download(await zip.generateAsync({type:'blob'}),'tacos-site.zip');
+      st.textContent='Downloaded tacos-site.zip. Unzip it and drag the folder onto this Netlify site\'s Deploys page. Client links: '+links.join('  ·  ');
+    }catch(err){st.className='status admin err';st.textContent='Could not export: '+err.message+'. Open the deployed site (not a saved file) and try again.';}
+  };
+  $('exportBtn').onclick=()=>{
+    const blob=new Blob([JSON.stringify(lsAll())],{type:'application/json'});
+    const a=document.createElement('a');a.href=URL.createObjectURL(blob);
+    a.download='tacos-tracker-backup-'+new Date().toISOString().slice(0,10)+'.json';
+    document.body.appendChild(a);a.click();a.remove();
+    setTimeout(()=>URL.revokeObjectURL(a.href),1500);
+    $('backupStatus').className='status admin';$('backupStatus').textContent='Backup downloaded.';
+  };
+  $('importBtn').onclick=()=>$('importFile').click();
+  $('importFile').onchange=async e=>{
+    const f=e.target.files[0],st=$('backupStatus');if(!f)return;st.className='status admin';
+    try{
+      const inc=JSON.parse(await f.text());
+      if(!inc||typeof inc!=='object'||typeof inc.clients!=='object'||typeof inc.weeks!=='object') throw new Error('This is not a TACOS tracker backup.');
+      const o=lsAll();let nw=0;
+      Object.keys(inc.clients||{}).forEach(id=>{if(/^[a-z0-9-]{1,60}$/.test(id)&&inc.clients[id]&&typeof inc.clients[id].name==='string')o.clients[id]={name:inc.clients[id].name};});
+      Object.keys(inc.weeks||{}).forEach(cid=>{if(!o.clients[cid])return;o.weeks[cid]=o.weeks[cid]||{};Object.keys(inc.weeks[cid]||{}).forEach(wid=>{const w=inc.weeks[cid][wid];if(/^[A-Z]{2}__\d{4}-\d{2}-\d{2}$/.test(wid)&&w&&Array.isArray(w.children)){o.weeks[cid][wid]=w;nw++;}});});
+      Object.keys(inc.tracked||{}).forEach(cid=>{if(o.clients[cid]&&inc.tracked[cid]&&typeof inc.tracked[cid]==='object')o.tracked[cid]=inc.tracked[cid];});
+      lsSave(o);await loadClients();
+      const ids=Object.keys(clients);selectClient(clients[clientId]?clientId:(ids[0]||''));
+      st.textContent='Imported '+nw+' week(s). Existing weeks with the same date were replaced.';
+    }catch(err){st.className='status admin err';st.textContent='Could not import: '+err.message;}
+    e.target.value='';
+  };
+  $('copyLink').onclick=async()=>{
+    const tk=clients[clientId]&&clients[clientId].shareToken,st=$('shareStatus');st.className='status';
+    if(!tk){st.className='status err';st.textContent='No link yet. Click New link.';return;}
+    const link=location.origin+'/client/'+tk;
+    try{await navigator.clipboard.writeText(link);st.textContent='Link copied.';}
+    catch(e){st.textContent=link;}
+  };
+  let rotArmed=false,rotTimer=null;
+  $('rotateLink').onclick=async()=>{
+    const st=$('shareStatus'),btn=$('rotateLink');st.className='status';
+    if(!rotArmed){rotArmed=true;btn.textContent='Click again to replace';clearTimeout(rotTimer);rotTimer=setTimeout(()=>{rotArmed=false;btn.textContent='New link';},4000);return;}
+    rotArmed=false;btn.textContent='New link';
+    try{const r=await api('POST','clients/'+clientId+'/token');clients[clientId].shareToken=r.shareToken;st.textContent='New link created. The old link no longer works.';}
+    catch(err){st.className='status err';st.textContent='Could not create link: '+err.message;}
+  };
+  $('fBiz').onchange=e=>onFile('biz',e.target.files[0]);
+  $('fSp').onchange=e=>onFile('sp',e.target.files[0]);
+  $('upMp').onchange=()=>{refreshPreview();renderSavedChips();};
+  $('weekDate').oninput=()=>{dateTouched=true;updateSaveEnabled();};
+  $('weekLabel').oninput=()=>{dateTouched=true;};
+  $('saveBtn').onclick=saveWeek;
+  $('savedWeeks').addEventListener('click',async e=>{
+    const b=e.target.closest('[data-del]');if(!b) return;
+    const id=b.dataset.del;
+    if(armedDel!==id){armedDel=id;renderSavedChips();clearTimeout(armedTimer);armedTimer=setTimeout(()=>{armedDel=null;renderSavedChips();},4000);return;}
+    armedDel=null;clearTimeout(armedTimer);
+    try{await delWeek(id);}catch(err){$('upStatus').className='status err';$('upStatus').textContent='Could not delete: '+((err&&err.message)||err);}
+    renderSavedChips();
+  });
+  $('trMp').onchange=()=>{$('trList').value=(tracked[$('trMp').value]||[]).join('\n');};
+  $('saveTrBtn').onclick=saveTracked;
+  $('cleanBtn').onclick=cleanup;
+  $('mpTabs').addEventListener('click',e=>{const b=e.target.closest('[data-mp]');if(!b)return;selMp=b.dataset.mp;renderAll();});
+  $('weeksSel').onchange=e=>{weeksShown=+e.target.value;renderTable();};
+  $('metricChips').addEventListener('change',e=>{const c=e.target.closest('[data-m]');if(!c)return;if(c.checked)metricsOn.add(c.dataset.m);else metricsOn.delete(c.dataset.m);renderTable();});
+  $('expandAll').onclick=()=>{
+    const all=weeksOf(selMp);const vis=weeksShown>0?all.slice(-weeksShown):all;
+    for(const w of vis) for(const r of w.children) expanded.add(selMp+'|'+r.p);
+    renderTable();
+  };
+  $('collapseAll').onclick=()=>{expanded=new Set();renderTable();};
+  $('tableArea').addEventListener('click',e=>{
+    const b=e.target.closest('[data-p]');if(!b) return;
+    const k=b.dataset.p;if(expanded.has(k))expanded.delete(k);else expanded.add(k);
+    renderTable();
+  });
+  let rz;window.addEventListener('resize',()=>{clearTimeout(rz);rz=setTimeout(renderTrend,200);});
+}
+
+const OLD_KEY='rocketiseTacos.static.v1';
+function oldData(){try{const o=JSON.parse(lsGet(OLD_KEY)||'null');return o&&o.clients&&Object.keys(o.clients).length?o:null;}catch(e){return null;}}
+function checkMigrate(){ $('migrateBtn').hidden=!oldData(); }
+$('migrateBtn').onclick=async()=>{
+  const o=oldData(),st=$('backupStatus');st.className='status admin';
+  if(!o) return;
+  try{
+    let nw=0;
+    for(const id of Object.keys(o.clients)){
+      await api('PUT','clients/'+id,{name:o.clients[id].name});
+      for(const [wid,w] of Object.entries((o.weeks||{})[id]||{})){await api('PUT','weeks/'+id+'/'+wid,w);nw++;}
+      if(o.tracked&&o.tracked[id]) await api('PUT','tracked/'+id,o.tracked[id]);
+    }
+    try{localStorage.removeItem(OLD_KEY);}catch(e){}
+    await loadClients();
+    const ids=Object.keys(clients);selectClient(clients[clientId]?clientId:(ids[0]||''));
+    st.textContent='Moved '+Object.keys(o.clients).length+' client(s) and '+nw+' week(s) to the server.';
+    checkMigrate();
+  }catch(err){st.className='status admin err';st.textContent='Could not move the data: '+err.message;}
+};
+(async function init(){
+  const pm=location.pathname.match(/^\/client\/([a-z0-9-]+)\/?$/i);
+  let snap=null;
+  if(pm){
+    try{snap=await api('GET','public?slug='+encodeURIComponent(pm[1].toLowerCase()),null,true);}
+    catch(e){snap={err:e.status===404?'This link is not valid any more. Ask for a new link.':'Could not load the report. Please try again later.'};}
+    if(snap&&Array.isArray(snap.hide)){
+      for(const k of snap.hide){
+        HIDDEN.add(k);
+        let i=METRICS.findIndex(m=>m.k===k);if(i>=0) METRICS.splice(i,1);
+        i=TREND_METRICS.findIndex(m=>m.k===k);if(i>=0) TREND_METRICS.splice(i,1);
+      }
+      if(TREND_METRICS.length&&!TREND_METRICS.some(m=>m.k===trend.metric)) trend.metric=TREND_METRICS[0].k;
+    }
+  }
+  buildStatic();bind();
+  if(pm){
+    document.body.classList.remove('locked');
+    snapMode=true;canEdit=false;
+    if(snap&&snap.client&&Array.isArray(snap.weeks)){
+      clientId=snap.client.id;clients={};clients[clientId]={name:snap.client.name};
+      weeks=snap.weeks;tracked={};
+      applyMode();onWeeks();
+      setFoot('Report updated '+(snap.generatedAt?new Date(snap.generatedAt).toLocaleDateString('en-GB',{day:'numeric',month:'short',year:'numeric'}):'')+'.');
+    }else{applyMode();renderAll();setFoot((snap&&snap.err)||'This report could not be loaded.');}
+    return;
+  }
+  const saved=ssGet(SS_PW);
+  if(saved){
+    adminPw=saved;
+    try{canEdit=true;document.body.classList.remove('locked');applyMode();await enterAdmin();checkMigrate();return;}
+    catch(e){adminPw='';ssSet(SS_PW,null);canEdit=false;}
+  }
+  lock();
+})();
+</script>
+</body>
+</html>
