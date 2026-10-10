@@ -1,0 +1,15 @@
+[build]
+  publish = "public"
+  functions = "netlify/functions"
+
+# Client pages: /client/<name>-<code> all open the same page, which reads the address.
+[[redirects]]
+  from = "/client/*"
+  to = "/index.html"
+  status = 200
+
+[[headers]]
+  for = "/*"
+  [headers.values]
+    X-Robots-Tag = "noindex, nofollow"
+    Referrer-Policy = "no-referrer"
