@@ -852,7 +852,7 @@ function overlayHtml(on,wk,cur,W,tips){
     const p=wk[i];let t='<b>'+esc(p.w.label||p.w.startDate)+'</b>';
     if(!p.has) return t+'<div>No data this week</div>';
     for(const se of series){
-      t+='<div><i class="sw" style="background:var(--s-'+se.k+')"></i><span>'+esc(se.l)+'</span> <span class="n">'+esc(okNum(se.raw[i])?fv(se.k,p.a,cur,true):'–')+'</span>'+(okNum(se.vals[i])?' <span class="n">· index '+Math.round(se.vals[i])+'</span>':'')+'</div>';
+      t+='<div><i class="sw" style="background:var(--s-'+se.k+')"></i><span>'+esc(se.l)+'</span> <span class="n">'+esc(okNum(se.raw[i])?fv(se.k,p.a,cur,true):'–')+'</span>'+'</div>';
     }
     return t;
   };
