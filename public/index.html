@@ -19,12 +19,14 @@ body{margin:0}
   --good:#17753f; --good-bg:#dff2e7; --warn:#9a5200; --warn-bg:#fcebcb; --bad:#b92b2b; --bad-bg:#fbe0e0;
   --font-ui:'Schibsted Grotesk',system-ui,-apple-system,'Segoe UI',Roboto,sans-serif;
   --font-num:'JetBrains Mono',ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;
+  --s-spend:#c2410c; --s-sales:#0e7490; --s-orders:#7e22ce; --s-units:#4d7c0f; --s-tacos:#2f45c8; --s-sessions:#9d174d; --s-cvr:#475569;
 }
 @media (prefers-color-scheme: dark){
   :root:not([data-theme="light"]){
     --bg:#0f121b; --card:#171b27; --card2:#1d2231; --text:#e6e9f3; --sub:#97a0b7; --border:#2a3043;
     --accent:#8394ff; --accent-ink:#0f121b; --accent-soft:#232a4d;
     --good:#58d08b; --good-bg:#17382a; --warn:#f0b05a; --warn-bg:#3d2d12; --bad:#ff8a8a; --bad-bg:#401b1f;
+    --s-spend:#fb923c; --s-sales:#22d3ee; --s-orders:#c084fc; --s-units:#a3e635; --s-tacos:#8394ff; --s-sessions:#f472b6; --s-cvr:#94a3b8;
     color-scheme:dark;
   }
 }
@@ -32,11 +34,12 @@ body{margin:0}
   --bg:#0f121b; --card:#171b27; --card2:#1d2231; --text:#e6e9f3; --sub:#97a0b7; --border:#2a3043;
   --accent:#8394ff; --accent-ink:#0f121b; --accent-soft:#232a4d;
   --good:#58d08b; --good-bg:#17382a; --warn:#f0b05a; --warn-bg:#3d2d12; --bad:#ff8a8a; --bad-bg:#401b1f;
+  --s-spend:#fb923c; --s-sales:#22d3ee; --s-orders:#c084fc; --s-units:#a3e635; --s-tacos:#8394ff; --s-sessions:#f472b6; --s-cvr:#94a3b8;
   color-scheme:dark;
 }
 *{box-sizing:border-box}
 body{background:var(--bg);color:var(--text);font-family:var(--font-ui);font-size:14px;line-height:1.45}
-.wrap{max-width:1440px;margin:0 auto;padding-inline:16px;padding-block:18px 64px;display:flex;flex-direction:column;gap:16px}
+.wrap{max-width:none;margin:0;padding-inline:clamp(16px,2vw,32px);padding-block:18px 64px;display:flex;flex-direction:column;gap:16px}
 body.client .admin, body.readonly .admin{display:none !important}
 button,input,select,textarea{font:inherit;color:inherit}
 :focus-visible{outline:2px solid var(--accent);outline-offset:2px}
@@ -91,7 +94,19 @@ textarea{width:100%;font-family:var(--font-num);font-size:12px}
 .dot{display:inline-block;width:9px;height:9px;border-radius:3px;margin-right:5px;vertical-align:-1px}
 .dot.g{background:var(--good)} .dot.o{background:var(--warn)} .dot.r{background:var(--bad)}
 
-.trend{border:1px solid var(--border);border-radius:10px;padding:12px;display:flex;flex-direction:column;gap:10px;position:relative;min-width:0}
+.trendbox{display:flex;flex-direction:column;gap:12px;min-width:0}
+.kpis{display:flex;flex-wrap:wrap;gap:6px;align-items:center}
+.kchip{padding:3px 10px 3px 8px}
+.kchip:has(input:not(:checked)){opacity:.55}
+.sw{display:inline-block;width:9px;height:9px;border-radius:3px;flex:none}
+.tgrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(320px,1fr));gap:12px}
+.tpanel{border:1px solid var(--border);border-radius:10px;padding:12px;display:flex;flex-direction:column;gap:6px;position:relative;min-width:0;background:var(--card)}
+.thead{display:flex;justify-content:space-between;align-items:baseline;gap:8px}
+.tname{display:flex;align-items:center;gap:6px;font-weight:600;font-size:12.5px}
+.tval{font-family:var(--font-num);font-weight:600;font-size:18px}
+.tdelta{font-family:var(--font-num);font-size:11.5px;color:var(--sub)}
+.tip div{display:flex;align-items:center;gap:6px}
+.empty.small{padding:18px 8px}
 .seg{display:inline-flex;border:1px solid var(--border);border-radius:8px;overflow:hidden}
 .seg button{border:0;background:transparent;padding:5px 11px;font-size:12.5px;font-weight:600;color:var(--sub);cursor:pointer;border-right:1px solid var(--border)}
 .seg button:last-child{border-right:0}
@@ -232,6 +247,7 @@ tbody tr:last-child td{border-bottom:0}
       <div class="grp">
         <button class="btn ghost small" id="expandAll" type="button">Expand all</button>
         <button class="btn ghost small" id="collapseAll" type="button">Collapse all</button>
+        <button class="btn ghost small" id="fsBtn" type="button">Full screen</button>
       </div>
     </div>
     <div class="legend-t"><span><i class="dot g"></i>TACOS 20% or lower</span><span><i class="dot o"></i>Above 20% to 22%</span><span><i class="dot r"></i>Above 22%</span><span>Parent TACOS is total spend ÷ total sales of all its children, not an average of child percentages.</span></div>
@@ -256,6 +272,7 @@ const METRICS=[
 ];
 const HIDDEN=new Set(); /* metrics removed from a client page */
 const TREND_METRICS=[{k:'tacos',l:'TACOS'},{k:'sales',l:'Sales'},{k:'spend',l:'Total spend'},{k:'units',l:'Units'},{k:'cvr',l:'Unit session %'}];
+let trendOn=new Set(METRICS.map(m=>m.k)),trendMode='split';
 const LS_CLIENT='rocketiseTacos.client', SS_PW='rocketiseTacos.pw';
 
 let canEdit=false,adminPw='';
@@ -732,19 +749,151 @@ function compact(v){
   if(a>=1e3) return (v/1e3).toFixed(a>=1e4?0:1).replace(/\.0$/,'')+'k';
   return String(Math.round(v*100)/100);
 }
+/* ---------- trend charts: one panel per ticked KPI, or all KPIs overlaid on one axis ---------- */
+const TREND_KEY='rocketiseTacos.trend';
+(function(){
+  try{
+    const o=JSON.parse(lsGet(TREND_KEY)||'null');
+    if(o&&Array.isArray(o.on)) trendOn=new Set(o.on.filter(k=>METRICS.some(m=>m.k===k)));
+    if(o&&(o.mode==='split'||o.mode==='overlay')) trendMode=o.mode;
+  }catch(e){}
+})();
+function saveTrendPrefs(){lsSet(TREND_KEY,JSON.stringify({on:[...trendOn],mode:trendMode}));}
+const isPct=k=>k==='tacos'||k==='cvr';
+const isMoney=k=>k==='sales'||k==='spend';
+function tickFmt(k,v,cur){return isPct(k)?(+v.toFixed(4))+'%':isMoney(k)?cur+compact(v):compact(v);}
+function niceRange(lo,hi){
+  if(!(hi>lo)) hi=lo+1;
+  const sc=niceScale(hi-lo);
+  const min=Math.floor(lo/sc.step)*sc.step;
+  const n=Math.max(1,Math.ceil((hi-min)/sc.step-1e-9));
+  return {min,step:sc.step,n};
+}
+const okNum=v=>v!=null&&isFinite(v);
+
+function chartSvg(o){
+  const wk=o.wk,W=o.W,H=o.H,L=46,R=14,T=10,B=26;
+  const top=o.min+o.step*o.n,span=top-o.min,gw=W-L-R;
+  const y=v=>T+(H-T-B)*(1-(v-o.min)/span);
+  const x=i=>wk.length<2?(L+W-R)/2:L+i*gw/(wk.length-1);
+  let s='<svg class="chart" viewBox="0 0 '+W+' '+H+'" role="img" aria-label="'+esc(o.label)+'">';
+  if(o.tacosBands){
+    if(top>20) s+='<rect x="'+L+'" y="'+y(Math.min(22,top)).toFixed(1)+'" width="'+gw+'" height="'+Math.max(0,y(20)-y(Math.min(22,top))).toFixed(1)+'" fill="var(--warn-bg)"/>';
+    if(top>22) s+='<rect x="'+L+'" y="'+y(top).toFixed(1)+'" width="'+gw+'" height="'+Math.max(0,y(22)-y(top)).toFixed(1)+'" fill="var(--bad-bg)" opacity=".55"/>';
+  }
+  for(let g=0;g<=o.n;g++){
+    const v=o.min+g*o.step,yy=y(v);
+    s+='<line x1="'+L+'" x2="'+(W-R)+'" y1="'+yy.toFixed(1)+'" y2="'+yy.toFixed(1)+'" stroke="var(--border)"/>';
+    s+='<text x="'+(L-6)+'" y="'+(yy+3).toFixed(1)+'" text-anchor="end">'+esc(o.fmt(v))+'</text>';
+  }
+  if(o.baseline!=null){
+    const yb=y(o.baseline);
+    s+='<line x1="'+L+'" x2="'+(W-R)+'" y1="'+yb.toFixed(1)+'" y2="'+yb.toFixed(1)+'" stroke="var(--sub)" stroke-dasharray="4 4" opacity=".7"/>';
+  }
+  const every=Math.max(1,Math.ceil(wk.length/Math.max(1,Math.floor(gw/62))));
+  wk.forEach((p,i)=>{if(i%every===0||i===wk.length-1)s+='<text x="'+x(i).toFixed(1)+'" y="'+(H-8)+'" text-anchor="middle">'+esc(shortDay(p.w.startDate))+'</text>';});
+  const dots=wk.length<=26;
+  for(const se of o.series){
+    const col='var(--s-'+se.k+')',segs=[];let cs=[],lastI=-1;
+    se.vals.forEach((v,i)=>{if(!okNum(v)){if(cs.length)segs.push(cs);cs=[];}else{cs.push([x(i),y(v)]);lastI=i;}});
+    if(cs.length)segs.push(cs);
+    for(const sg of segs){
+      if(o.area&&sg.length>1) s+='<path d="M'+sg[0][0].toFixed(1)+','+y(o.min).toFixed(1)+' '+sg.map(q=>'L'+q[0].toFixed(1)+','+q[1].toFixed(1)).join(' ')+' L'+sg[sg.length-1][0].toFixed(1)+','+y(o.min).toFixed(1)+' Z" fill="'+col+'" fill-opacity=".1"/>';
+      if(sg.length>1) s+='<polyline fill="none" stroke="'+col+'" stroke-width="'+(o.lw||2)+'" stroke-linejoin="round" points="'+sg.map(q=>q[0].toFixed(1)+','+q[1].toFixed(1)).join(' ')+'"/>';
+    }
+    se.vals.forEach((v,i)=>{if(okNum(v)&&(dots||i===lastI))s+='<circle cx="'+x(i).toFixed(1)+'" cy="'+y(v).toFixed(1)+'" r="'+(i===lastI?4.5:3)+'" fill="'+col+'" stroke="var(--card)" stroke-width="1.5"/>';});
+  }
+  const bw=wk.length<2?gw:gw/(wk.length-1);
+  wk.forEach((p,i)=>{s+='<line class="gl" data-i="'+i+'" x1="'+x(i).toFixed(1)+'" x2="'+x(i).toFixed(1)+'" y1="'+T+'" y2="'+(H-B)+'" stroke="var(--sub)" stroke-dasharray="3 3" style="display:none" pointer-events="none"/>';});
+  wk.forEach((p,i)=>{s+='<rect class="band" data-i="'+i+'" x="'+(x(i)-bw/2).toFixed(1)+'" y="0" width="'+bw.toFixed(1)+'" height="'+H+'" fill="transparent"/>';});
+  return s+'</svg>';
+}
+
+function panelHtml(m,wk,cur,W,tips){
+  const vals=wk.map(p=>p.has?p.a[m.k]:null);
+  const okv=vals.filter(okNum);
+  let head='<span class="tname"><i class="sw" style="background:var(--s-'+m.k+')"></i>'+esc(m.l)+'</span>';
+  if(!okv.length) return '<div class="tpanel"><div class="thead">'+head+'</div><div class="empty small">No data for this selection.</div></div>';
+  let li=-1,pi=-1;
+  for(let i=vals.length-1;i>=0;i--){if(okNum(vals[i])){if(li<0)li=i;else{pi=i;break;}}}
+  head+='<span class="tval">'+esc(fv(m.k,wk[li].a,cur,true))+'</span>';
+  let dl=esc(shortDay(wk[li].w.startDate));
+  if(pi>=0){
+    const a=vals[li],b=vals[pi];let d='';
+    if(isPct(m.k)){const dx=a-b;d=(dx<0?'−':'+')+fmtNum(Math.abs(dx),2)+' pp';}
+    else if(b!==0){const dx=(a/b-1)*100;d=(dx<0?'−':'+')+fmtNum(Math.abs(dx),1)+'%';}
+    if(d) dl+=' · '+d+' vs '+esc(shortDay(wk[pi].w.startDate));
+  }
+  let hi=Math.max(...okv)*1.1;
+  if(m.k==='tacos') hi=Math.max(hi,24);
+  const sc=niceScale(hi);
+  const svg=chartSvg({W,H:160,wk,series:[{k:m.k,vals}],min:0,step:sc.step,n:sc.n,fmt:v=>tickFmt(m.k,v,cur),tacosBands:m.k==='tacos',area:true,label:'Weekly '+m.l+' trend'});
+  tips[m.k]=i=>{const p=wk[i];return '<b>'+esc(p.w.label||p.w.startDate)+'</b>'+(p.has?'<div>'+esc(m.l)+' <span class="n">'+esc(fv(m.k,p.a,cur,true))+'</span></div>':'<div>No data this week</div>');};
+  return '<div class="tpanel" data-k="'+m.k+'"><div class="thead">'+head+'</div><div class="tdelta">'+dl+'</div>'+svg+'<div class="tip"></div></div>';
+}
+
+function overlayHtml(on,wk,cur,W,tips){
+  const series=[],skipped=[];
+  for(const m of on){
+    const raw=wk.map(p=>p.has?p.a[m.k]:null);
+    const bi=raw.findIndex(v=>okNum(v)&&v>0);
+    if(bi<0){skipped.push(m.l);continue;}
+    const base=raw[bi];
+    series.push({k:m.k,l:m.l,raw,vals:raw.map(v=>okNum(v)?v/base*100:null)});
+  }
+  if(!series.length) return '<div class="tpanel"><div class="empty small">No data for this selection.</div></div>';
+  let lo=100,hi=100;
+  for(const se of series) for(const v of se.vals) if(okNum(v)){if(v<lo)lo=v;if(v>hi)hi=v;}
+  const pad=(hi-lo)*0.08||5;
+  lo=Math.max(0,lo-pad);hi+=pad;
+  const rg=niceRange(lo,hi);
+  const svg=chartSvg({W,H:300,wk,series,min:rg.min,step:rg.step,n:rg.n,fmt:v=>String(Math.round(v)),baseline:100,lw:1.75,label:'Weekly KPI trends, each indexed to its first week'});
+  tips.overlay=i=>{
+    const p=wk[i];let t='<b>'+esc(p.w.label||p.w.startDate)+'</b>';
+    if(!p.has) return t+'<div>No data this week</div>';
+    for(const se of series){
+      t+='<div><i class="sw" style="background:var(--s-'+se.k+')"></i><span>'+esc(se.l)+'</span> <span class="n">'+esc(okNum(se.raw[i])?fv(se.k,p.a,cur,true):'–')+'</span>'+(okNum(se.vals[i])?' <span class="n">· index '+Math.round(se.vals[i])+'</span>':'')+'</div>';
+    }
+    return t;
+  };
+  const note='Each line is indexed to its first week with data (dashed line = 100), so KPIs with different units share one axis. Hover a week for the real values.'+(skipped.length?' No data for: '+esc(skipped.join(', '))+'.':'');
+  return '<div class="tpanel" data-overlay="1">'+svg+'<p class="hint">'+note+'</p><div class="tip"></div></div>';
+}
+
+function attachHover(box,tipFn){
+  const tip=box.querySelector('.tip');
+  if(!tip||!tipFn) return;
+  const gls=box.querySelectorAll('.gl');
+  const show=(e,i)=>{
+    tip.innerHTML=tipFn(i);tip.style.display='block';
+    const r=box.getBoundingClientRect();
+    let lx=e.clientX-r.left+14;
+    if(lx+tip.offsetWidth>r.width) lx=e.clientX-r.left-tip.offsetWidth-14;
+    tip.style.left=Math.max(4,lx)+'px';tip.style.top=(e.clientY-r.top+14)+'px';
+    gls.forEach(g=>{g.style.display=(+g.dataset.i===i)?'':'none';});
+  };
+  const hide=()=>{tip.style.display='none';gls.forEach(g=>{g.style.display='none';});};
+  box.querySelectorAll('.band').forEach(b=>{const i=+b.dataset.i;b.addEventListener('mousemove',e=>show(e,i));b.addEventListener('click',e=>show(e,i));b.addEventListener('mouseleave',hide);});
+}
+
 function renderTrend(){
   const el=$('trendArea');
   const all=weeksOf(selMp);
-  const tms=TREND_METRICS.filter(m=>!HIDDEN.has(m.k));
+  const tms=METRICS.filter(m=>!HIDDEN.has(m.k));
   if(!all.length||!tms.length){el.innerHTML='';return;}
-  if(!tms.some(m=>m.k===trend.metric)) trend.metric=tms[0].k;
+  const ae=document.activeElement;
+  let refocus='';
+  if(ae&&el.contains(ae)){
+    if(ae.dataset&&ae.dataset.tk) refocus='[data-tk="'+ae.dataset.tk+'"]';
+    else if(ae.dataset&&ae.dataset.tmode) refocus='[data-tmode="'+ae.dataset.tmode+'"]';
+    else if(ae.id==='trScope') refocus='#trScope';
+  }
   const cur=curOf(selMp);
-  const sales=new Map(),ptitle=new Map(),ctitle=new Map(),cparent=new Map();
+  const sales=new Map(),ptitle=new Map(),ctitle=new Map();
   for(const w of all) for(const r of w.children){
     sales.set('P:'+r.p,(sales.get('P:'+r.p)||0)+(r.sales||0));
     sales.set('C:'+r.c,(sales.get('C:'+r.c)||0)+(r.sales||0));
     if(r.t){ctitle.set(r.c,r.t);if(!ptitle.has(r.p))ptitle.set(r.p,r.t);}
-    cparent.set(r.c,r.p);
   }
   const keys=pre=>[...sales.keys()].filter(k=>k.startsWith(pre)).sort((a,b)=>sales.get(b)-sales.get(a));
   const pk=keys('P:'),ck=keys('C:');
@@ -753,73 +902,36 @@ function renderTrend(){
   const scopeSel='<select id="trScope" aria-label="Chart scope">'+opt('ALL','All tracked parents')+
     '<optgroup label="Parent ASINs">'+pk.map(k=>opt(k,k.slice(2)+(ptitle.get(k.slice(2))?' · '+ptitle.get(k.slice(2)).slice(0,40):''))).join('')+'</optgroup>'+
     '<optgroup label="Child ASINs">'+ck.map(k=>opt(k,k.slice(2)+(ctitle.get(k.slice(2))?' · '+ctitle.get(k.slice(2)).slice(0,40):''))).join('')+'</optgroup></select>';
-  const segs='<div class="seg" role="group" aria-label="Chart metric">'+TREND_METRICS.filter(m=>!HIDDEN.has(m.k)).map(m=>'<button type="button" data-tm="'+m.k+'" aria-pressed="'+(m.k===trend.metric)+'">'+m.l+'</button>').join('')+'</div>';
+  const kchips='<div class="kpis" role="group" aria-label="KPIs shown in the trend charts"><span class="lbl">Trend KPIs</span>'+
+    tms.map(m=>'<label class="chip kchip"><input type="checkbox" data-tk="'+m.k+'"'+(trendOn.has(m.k)?' checked':'')+'><i class="sw" style="background:var(--s-'+m.k+')"></i><span>'+esc(m.l)+'</span></label>').join('')+
+    '<button class="btn ghost small" type="button" data-tall="1">All</button><button class="btn ghost small" type="button" data-tall="0">None</button></div>';
+  const modeSeg='<div class="seg" role="group" aria-label="Chart layout"><button type="button" data-tmode="split" aria-pressed="'+(trendMode==='split')+'">Separate</button><button type="button" data-tmode="overlay" aria-pressed="'+(trendMode==='overlay')+'">Overlay</button></div>';
 
-  const pts=all.map(w=>{
+  const wk=all.map(w=>{
     let rows=w.children;
     if(trend.scope.startsWith('P:')) rows=rows.filter(r=>r.p===trend.scope.slice(2));
     else if(trend.scope.startsWith('C:')) rows=rows.filter(r=>r.c===trend.scope.slice(2));
-    const a=agg(rows);
-    return {w,a,has:rows.length>0,v:rows.length?a[trend.metric]:null};
+    return {w,a:agg(rows),has:rows.length>0};
   });
-  const vals=pts.map(p=>p.v).filter(v=>v!=null&&isFinite(v));
-  const W=Math.max(300,Math.round((el.clientWidth||680)-26)),H=210,L=50,R=16,T=12,B=30;
-  let svg='';
-  if(!vals.length){
-    svg='<div class="empty">No data for this selection.</div>';
-  }else{
-    let mx=Math.max(...vals)*1.1;
-    if(trend.metric==='tacos') mx=Math.max(mx,24);
-    const sc=niceScale(mx),top=sc.step*sc.n;
-    const y=v=>T+(H-T-B)*(1-v/top);
-    const x=i=>pts.length<2?(L+W-R)/2:L+i*(W-L-R)/(pts.length-1);
-    const fmtTick=v=>trend.metric==='tacos'||trend.metric==='cvr'?(+v.toFixed(4))+'%':trend.metric==='units'?compact(v):cur+compact(v);
-    svg='<svg class="chart" viewBox="0 0 '+W+' '+H+'" role="img" aria-label="Weekly '+esc(trend.metric)+' trend">';
-    if(trend.metric==='tacos'){
-      svg+='<rect x="'+L+'" y="'+y(Math.min(22,top)).toFixed(1)+'" width="'+(W-L-R)+'" height="'+Math.max(0,y(20)-y(Math.min(22,top))).toFixed(1)+'" fill="var(--warn-bg)"/>';
-      if(top>22) svg+='<rect x="'+L+'" y="'+y(top).toFixed(1)+'" width="'+(W-L-R)+'" height="'+(y(22)-y(top)).toFixed(1)+'" fill="var(--bad-bg)" opacity=".55"/>';
-    }
-    for(let g=0;g<=sc.n;g++){
-      const v=g*sc.step,yy=y(v);
-      svg+='<line x1="'+L+'" x2="'+(W-R)+'" y1="'+yy.toFixed(1)+'" y2="'+yy.toFixed(1)+'" stroke="var(--border)"/>';
-      svg+='<text x="'+(L-6)+'" y="'+(yy+3).toFixed(1)+'" text-anchor="end">'+esc(fmtTick(v))+'</text>';
-    }
-    const every=Math.max(1,Math.ceil(pts.length/Math.max(1,Math.floor((W-L-R)/62))));
-    pts.forEach((p,i)=>{if(i%every===0||i===pts.length-1)svg+='<text x="'+x(i).toFixed(1)+'" y="'+(H-10)+'" text-anchor="middle">'+esc(shortDay(p.w.startDate))+'</text>';});
-    let seg=[];const segs2=[];
-    pts.forEach((p,i)=>{if(p.v==null||!isFinite(p.v)){if(seg.length)segs2.push(seg);seg=[];}else seg.push([x(i),y(p.v)]);});
-    if(seg.length)segs2.push(seg);
-    for(const s of segs2) if(s.length>1) svg+='<polyline fill="none" stroke="var(--accent)" stroke-width="2" stroke-linejoin="round" points="'+s.map(q=>q[0].toFixed(1)+','+q[1].toFixed(1)).join(' ')+'"/>';
-    pts.forEach((p,i)=>{if(p.v!=null&&isFinite(p.v)){const lastPt=i===pts.length-1;svg+='<circle cx="'+x(i).toFixed(1)+'" cy="'+y(p.v).toFixed(1)+'" r="'+(lastPt?4.5:3)+'" fill="var(--accent)" stroke="var(--card)" stroke-width="1.5"/>';}});
-    const bw=pts.length<2?W:(W-L-R)/(pts.length-1);
-    pts.forEach((p,i)=>{svg+='<line class="gl" data-i="'+i+'" x1="'+x(i).toFixed(1)+'" x2="'+x(i).toFixed(1)+'" y1="'+T+'" y2="'+(H-B)+'" stroke="var(--sub)" stroke-dasharray="3 3" style="display:none" pointer-events="none"/>';});
-    pts.forEach((p,i)=>{svg+='<rect class="band" data-i="'+i+'" x="'+(x(i)-bw/2).toFixed(1)+'" y="0" width="'+bw.toFixed(1)+'" height="'+H+'" fill="transparent"/>';});
-    svg+='</svg>';
+  const on=tms.filter(m=>trendOn.has(m.k));
+  const tips={};
+  const cw=el.clientWidth||900,gap=12;
+  let body;
+  if(!on.length) body='<div class="empty small">Tick at least one KPI to see its trend.</div>';
+  else if(trendMode==='overlay') body=overlayHtml(on,wk,cur,Math.max(300,cw-28),tips);
+  else{
+    const cols=Math.max(1,Math.floor((cw+gap)/(320+gap)));
+    const pw=Math.max(260,Math.floor((cw-(cols-1)*gap)/cols)-26);
+    body='<div class="tgrid">'+on.map(m=>panelHtml(m,wk,cur,pw,tips)).join('')+'</div>';
   }
-  el.innerHTML='<div class="trend"><div class="controls">'+segs+scopeSel+'</div>'+svg+'<div class="tip" id="tip"></div></div>';
-  const box=el.querySelector('.trend'),tip=$('tip');
-  el.querySelectorAll('[data-tm]').forEach(b=>b.onclick=()=>{trend.metric=b.dataset.tm;renderTrend();});
+  el.innerHTML='<div class="trendbox"><div class="controls">'+kchips+modeSeg+scopeSel+'</div>'+body+'</div>';
+
+  el.querySelectorAll('[data-tk]').forEach(c=>c.onchange=()=>{if(c.checked)trendOn.add(c.dataset.tk);else trendOn.delete(c.dataset.tk);saveTrendPrefs();renderTrend();});
+  el.querySelectorAll('[data-tall]').forEach(b=>b.onclick=()=>{trendOn=b.dataset.tall==='1'?new Set(METRICS.map(m=>m.k)):new Set();saveTrendPrefs();renderTrend();});
+  el.querySelectorAll('[data-tmode]').forEach(b=>b.onclick=()=>{trendMode=b.dataset.tmode;saveTrendPrefs();renderTrend();});
   $('trScope').onchange=e=>{trend.scope=e.target.value;renderTrend();};
-  const show=(e,i)=>{
-    const p=pts[i];
-    let t='<b>'+esc(p.w.label||p.w.startDate)+'</b>';
-    if(!p.has) t+='<div>No data this week</div>';
-    else{
-      const a=p.a,hs=p.w.hasSD!==false;
-      if(!HIDDEN.has('sales')) t+='<div>Sales <span class="n">'+esc(cur+fmtNum(a.sales,2))+'</span></div>';
-      if(!HIDDEN.has('units')) t+='<div>Units <span class="n">'+fmtNum(a.units)+'</span></div>';
-      if(!HIDDEN.has('spend')) t+='<div>Spend <span class="n">'+esc(cur+fmtNum(a.spend,2))+'</span>'+''+'</div>';
-      if(!HIDDEN.has('tacos')) t+='<div>TACOS <span class="n">'+(a.tacos==null?'N/A':fmtNum(a.tacos,2)+'%')+'</span></div>';
-    }
-    tip.innerHTML=t;tip.style.display='block';
-    const r=box.getBoundingClientRect();
-    let lx=e.clientX-r.left+14;
-    if(lx+tip.offsetWidth>r.width) lx=e.clientX-r.left-tip.offsetWidth-14;
-    tip.style.left=Math.max(4,lx)+'px';tip.style.top=(e.clientY-r.top+14)+'px';
-    el.querySelectorAll('.gl').forEach(g=>{g.style.display=(+g.dataset.i===i)?'':'none';});
-  };
-  const hide=()=>{tip.style.display='none';el.querySelectorAll('.gl').forEach(g=>{g.style.display='none';});};
-  el.querySelectorAll('.band').forEach(b=>{const i=+b.dataset.i;b.addEventListener('mousemove',e=>show(e,i));b.addEventListener('click',e=>show(e,i));b.addEventListener('mouseleave',hide);});
+  el.querySelectorAll('.tpanel').forEach(p=>attachHover(p,p.dataset.overlay?tips.overlay:tips[p.dataset.k]));
+  if(refocus){const t=el.querySelector(refocus);if(t)t.focus();}
 }
 
 /* ---------- saved weeks + tracked list ---------- */
@@ -1074,6 +1186,10 @@ function bind(){
     const k=b.dataset.p;if(expanded.has(k))expanded.delete(k);else expanded.add(k);
     renderTable();
   });
+  const fs=$('fsBtn');
+  if(!document.fullscreenEnabled) fs.hidden=true;
+  fs.onclick=async()=>{try{if(document.fullscreenElement)await document.exitFullscreen();else await document.documentElement.requestFullscreen();}catch(e){fs.textContent='Full screen unavailable here';fs.disabled=true;}};
+  document.addEventListener('fullscreenchange',()=>{fs.textContent=document.fullscreenElement?'Exit full screen':'Full screen';});
   let rz;window.addEventListener('resize',()=>{clearTimeout(rz);rz=setTimeout(renderTrend,200);});
 }
 
